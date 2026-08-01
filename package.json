@@ -19,7 +19,6 @@
     "@tiptap/extension-youtube": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
     "@tiptap/vue-3": "^3.29.2",
-    "lucide-vue-next": "^1.0.0",
     "vue": "^3.4.0",
     "vue-router": "^4.6.4"
   },
