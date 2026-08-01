@@ -97,13 +97,13 @@
           <p class="text-sm text-gray-500">Akun Kinora Anda berhasil dibuat, {{ form.name }}.</p>
           <div class="space-y-3 pt-4">
             <button @click="$router.push('/portal')" class="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold shadow-md shadow-blue-200">Lanjutkan</button>
-            <a href="https://kinora.app/download" target="_blank" class="block text-xs text-gray-500 hover:text-blue-600">Download Aplikasi Kinora</a>
+            <a href="https://kinorafamilies.com/download" target="_blank" class="block text-xs text-gray-500 hover:text-blue-600">Download Aplikasi Kinora</a>
           </div>
         </div>
 
         <!-- Footer -->
         <div class="mt-8 pt-6 border-t border-gray-100 text-center">
-          <a href="/" class="text-xs text-gray-400 hover:text-blue-600">← kinora.app</a>
+          <a href="/" class="text-xs text-gray-400 hover:text-blue-600">← kinorafamilies.com</a>
         </div>
       </div>
     </div>

@@ -106,7 +106,7 @@
 
         <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
           <h3 class="font-semibold text-gray-900 text-sm">Domain</h3>
-          <input v-model="config.domain" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="https://kinora.app" />
+          <input v-model="config.domain" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="https://kinorafamilies.com" />
           <p class="text-xs text-gray-400">Domain production untuk sitemap dan robots.txt.</p>
         </div>
       </div>
@@ -272,7 +272,7 @@ const blockedPagesList = [
   { id: 'portal', label: 'User Portal' },
 ]
 
-const domain = computed(() => config.value.domain || 'https://kinora.app')
+const domain = computed(() => config.value.domain || 'https://kinorafamilies.com')
 
 const robotsDisallowText = computed({
   get: () => (config.value.robots.disallow || []).join('\n'),

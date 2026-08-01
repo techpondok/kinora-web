@@ -63,7 +63,7 @@
         <!-- Divider -->
         <div class="mt-8 pt-6 border-t border-gray-100 text-center">
           <p class="text-xs text-gray-400">Platform keluarga digital</p>
-          <a href="/" class="inline-block mt-2 text-xs text-gray-500 hover:text-blue-600 transition">← kinora.app</a>
+          <a href="/" class="inline-block mt-2 text-xs text-gray-500 hover:text-blue-600 transition">← kinorafamilies.com</a>
         </div>
       </div>
     </div>

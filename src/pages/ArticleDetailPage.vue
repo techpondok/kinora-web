@@ -121,7 +121,7 @@ const jsonLd = computed(() => {
     author: { '@type': 'Person', name: article.value.author_name || 'Kinora' },
     datePublished: article.value.published_at,
     dateModified: article.value.updated_at,
-    publisher: { '@type': 'Organization', name: 'Kinora', url: 'https://kinora.app' },
+    publisher: { '@type': 'Organization', name: 'Kinora', url: 'https://kinorafamilies.com' },
   }
   return JSON.stringify(schema)
 })

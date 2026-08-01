@@ -62,7 +62,7 @@
         <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
           <p class="font-semibold text-lg">Buka Aplikasi Kinora</p>
           <p class="text-sm opacity-80 mt-1">Gunakan aplikasi Kinora untuk menikmati seluruh fitur keluarga, keamanan, komunikasi, dan aktivitas harian.</p>
-          <a href="https://kinora.app/download" target="_blank" class="inline-block mt-4 px-5 py-2.5 bg-white text-blue-700 font-semibold text-sm rounded-lg hover:bg-blue-50 transition">
+          <a href="https://kinorafamilies.com/download" target="_blank" class="inline-block mt-4 px-5 py-2.5 bg-white text-blue-700 font-semibold text-sm rounded-lg hover:bg-blue-50 transition">
             Download / Buka Aplikasi
           </a>
         </div>
@@ -86,7 +86,7 @@
         <div v-if="!family" class="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <p class="text-gray-500 text-sm">Belum bergabung dengan family.</p>
           <p class="text-xs text-gray-400 mt-1">Buat atau bergabung ke family melalui aplikasi Kinora.</p>
-          <a href="https://kinora.app/download" target="_blank" class="inline-block mt-3 px-4 py-2 bg-blue-600 text-white text-xs rounded-lg">Buka Aplikasi</a>
+          <a href="https://kinorafamilies.com/download" target="_blank" class="inline-block mt-3 px-4 py-2 bg-blue-600 text-white text-xs rounded-lg">Buka Aplikasi</a>
         </div>
         <div v-else class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <div class="flex items-center gap-3">
@@ -121,7 +121,7 @@
             </div>
             <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Aktif</span>
           </div>
-          <a href="https://kinora.app/download" target="_blank" class="inline-block px-4 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">Upgrade via Aplikasi</a>
+          <a href="https://kinorafamilies.com/download" target="_blank" class="inline-block px-4 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">Upgrade via Aplikasi</a>
         </div>
       </div>
 
@@ -169,7 +169,7 @@
               </div>
               <span class="px-2 py-0.5 text-[10px] rounded-full" :class="consultStatusColor(c.status)">{{ c.status }}</span>
             </div>
-            <a v-if="c.status === 'active'" href="https://kinora.app/download" target="_blank" class="inline-block mt-2 px-3 py-1.5 bg-teal-600 text-white text-xs rounded-lg">Buka di Aplikasi</a>
+            <a v-if="c.status === 'active'" href="https://kinorafamilies.com/download" target="_blank" class="inline-block mt-2 px-3 py-1.5 bg-teal-600 text-white text-xs rounded-lg">Buka di Aplikasi</a>
           </div>
         </div>
       </div>

@@ -60,7 +60,7 @@
           <p class="text-xs text-gray-400 uppercase font-medium mb-3">Kontak Lainnya</p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div class="flex items-center gap-2 text-gray-600">
-              <span>📧</span> support@kinora.app
+              <span>📧</span> support@kinorafamilies.com
             </div>
             <div class="flex items-center gap-2 text-gray-600">
               <span>💬</span> Chat di aplikasi Kinora
