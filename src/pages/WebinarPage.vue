@@ -1,0 +1,227 @@
+<template>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold text-gray-900">Webinar</h1>
+      <button @click="editingWebinar = {}; showEditor = true" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">+ Buat Webinar</button>
+    </div>
+
+    <div v-if="loading" class="text-center py-8 text-gray-500">Memuat...</div>
+
+    <div v-else-if="webinars.length === 0" class="bg-white rounded-xl border border-gray-200 p-12 text-center">
+      <div class="text-4xl mb-3">🎓</div>
+      <p class="text-gray-500">Belum ada webinar.</p>
+    </div>
+
+    <div v-else class="space-y-4">
+      <div v-for="w in webinars" :key="w.id" class="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
+        <div class="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+          <img v-if="w.cover_url" :src="w.cover_url" class="w-full h-full object-cover" />
+          <div v-else class="w-full h-full flex items-center justify-center text-2xl">🎓</div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-gray-900 text-sm truncate">{{ w.title }}</p>
+          <p class="text-xs text-gray-500">{{ w.speaker_name || '-' }} · {{ formatDate(w.scheduled_at) }}</p>
+          <div class="flex gap-2 mt-1">
+            <span :class="w.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" class="px-2 py-0.5 text-xs rounded-full">{{ w.is_published ? 'Published' : 'Draft' }}</span>
+            <span class="text-xs text-gray-400">{{ w.is_free ? 'Gratis' : 'Rp ' + Number(w.price_amount).toLocaleString('id-ID') }}</span>
+            <span class="text-xs text-gray-400">{{ w.meeting_platform }}</span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button @click="editingWebinar = {...w}; showEditor = true" class="text-xs text-blue-600 hover:underline">Edit</button>
+          <button @click="togglePublish(w)" class="text-xs" :class="w.is_published ? 'text-orange-600' : 'text-green-600'">{{ w.is_published ? 'Unpublish' : 'Publish' }}</button>
+          <button @click="confirmDelete(w)" class="text-xs text-red-600 hover:underline">Hapus</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Editor Modal -->
+    <div v-if="showEditor" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div class="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl p-6 space-y-4">
+        <h3 class="font-semibold text-gray-900">{{ editingWebinar.id ? 'Edit Webinar' : 'Buat Webinar' }}</h3>
+        <div v-if="editorError" class="p-2 bg-red-50 text-red-700 text-xs rounded">{{ editorError }}</div>
+
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Judul</label>
+          <input v-model="editingWebinar.title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Deskripsi</label>
+          <textarea v-model="editingWebinar.description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Pembicara</label>
+            <input v-model="editingWebinar.speaker_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Platform</label>
+            <select v-model="editingWebinar.meeting_platform" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+              <option value="zoom">Zoom</option>
+              <option value="gmeet">Google Meet</option>
+              <option value="youtube">YouTube</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Meeting URL</label>
+          <input v-model="editingWebinar.meeting_url" type="url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Jadwal</label>
+            <input v-model="editingWebinar.scheduled_at" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Selesai</label>
+            <input v-model="editingWebinar.end_at" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingWebinar.is_free" class="rounded" /> Gratis</label>
+          <div v-if="!editingWebinar.is_free">
+            <label class="block text-xs text-gray-500 mb-1">Harga (IDR)</label>
+            <input v-model.number="editingWebinar.price_amount" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Cover / Thumbnail</label>
+          <div v-if="editingWebinar.cover_url" class="mb-2 relative w-full h-32 rounded-lg overflow-hidden bg-gray-100">
+            <img :src="editingWebinar.cover_url" class="w-full h-full object-cover" />
+            <button @click="editingWebinar.cover_url = ''" class="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded">✕</button>
+          </div>
+          <input type="file" accept="image/jpeg,image/png,image/webp" @change="handleCoverUpload" class="text-xs" />
+          <p v-if="coverUploading" class="text-xs text-blue-600 mt-1">Mengupload...</p>
+          <p v-if="coverUploadError" class="text-xs text-red-600 mt-1">{{ coverUploadError }}</p>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Payment Instructions (jika berbayar)</label>
+          <textarea v-model="editingWebinar.payment_instructions" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button @click="showEditor = false; editorError = ''" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Batal</button>
+          <button @click="saveWebinar" :disabled="savingWebinar" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+            {{ savingWebinar ? 'Menyimpan...' : 'Simpan' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete modal -->
+    <div v-if="deletingWebinar" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+        <h3 class="font-semibold text-gray-900">Hapus Webinar</h3>
+        <p class="text-sm text-gray-600 mt-2">Yakin hapus "<strong>{{ deletingWebinar.title }}</strong>"?</p>
+        <div class="flex justify-end gap-3 mt-5">
+          <button @click="deletingWebinar = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Batal</button>
+          <button @click="doDelete" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">Hapus</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { supabase } from '../lib/supabase.js'
+
+const webinars = ref([])
+const loading = ref(true)
+const showEditor = ref(false)
+const editingWebinar = ref({})
+const savingWebinar = ref(false)
+const editorError = ref('')
+const deletingWebinar = ref(null)
+const coverUploading = ref(false)
+const coverUploadError = ref('')
+
+async function handleCoverUpload(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  coverUploadError.value = ''
+
+  if (file.size > 5 * 1024 * 1024) { coverUploadError.value = 'Max 5MB'; return }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { coverUploadError.value = 'Format: JPEG, PNG, WebP'; return }
+
+  coverUploading.value = true
+  const date = new Date()
+  const path = `webinars/${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}/cover-${Date.now()}.${file.name.split('.').pop()}`
+
+  const { error } = await supabase.storage.from('articles').upload(path, file, { cacheControl: '31536000', upsert: false })
+  if (error) {
+    coverUploadError.value = error.message
+  } else {
+    const { data: urlData } = supabase.storage.from('articles').getPublicUrl(path)
+    editingWebinar.value.cover_url = urlData.publicUrl
+  }
+  coverUploading.value = false
+}
+
+function formatDate(d) {
+  if (!d) return '-'
+  return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+async function loadWebinars() {
+  loading.value = true
+  const { data } = await supabase.from('kinora_webinars').select('*').order('scheduled_at', { ascending: false })
+  webinars.value = data || []
+  loading.value = false
+}
+
+async function saveWebinar() {
+  editorError.value = ''
+  if (!editingWebinar.value.title) { editorError.value = 'Judul wajib diisi'; return }
+  if (!editingWebinar.value.meeting_url) { editorError.value = 'Meeting URL wajib diisi'; return }
+  if (!editingWebinar.value.scheduled_at) { editorError.value = 'Jadwal wajib diisi'; return }
+
+  savingWebinar.value = true
+
+  const payload = { ...editingWebinar.value }
+  if (!payload.meeting_platform) payload.meeting_platform = 'zoom'
+  if (payload.is_free === undefined) payload.is_free = true
+  if (payload.is_free) payload.price_amount = 0
+
+  // Convert empty strings to null for timestamp fields
+  if (!payload.scheduled_at) payload.scheduled_at = null
+  if (!payload.end_at) payload.end_at = null
+
+  // Get current user for created_by
+  if (!payload.id) {
+    const { data: { user } } = await supabase.auth.getUser()
+    payload.created_by = user?.id
+  }
+
+  let result
+  if (payload.id) {
+    const { id, created_at, ...rest } = payload
+    result = await supabase.from('kinora_webinars').update(rest).eq('id', id)
+  } else {
+    result = await supabase.from('kinora_webinars').insert(payload)
+  }
+
+  if (result.error) {
+    editorError.value = result.error.message
+  } else {
+    showEditor.value = false
+    loadWebinars()
+  }
+  savingWebinar.value = false
+}
+
+async function togglePublish(w) {
+  await supabase.from('kinora_webinars').update({ is_published: !w.is_published }).eq('id', w.id)
+  loadWebinars()
+}
+
+function confirmDelete(w) { deletingWebinar.value = w }
+
+async function doDelete() {
+  await supabase.from('kinora_webinars').delete().eq('id', deletingWebinar.value.id)
+  deletingWebinar.value = null
+  loadWebinars()
+}
+
+onMounted(loadWebinars)
+</script>
