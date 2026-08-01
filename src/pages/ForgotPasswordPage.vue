@@ -25,6 +25,7 @@
         <a href="/login" class="text-sm text-blue-600 hover:underline">Kembali ke Login</a>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
