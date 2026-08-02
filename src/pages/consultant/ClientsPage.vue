@@ -32,6 +32,7 @@
           </div>
         </div>
       </div>
+      </template>
     </div>
   </ConsultantLayout>
 </template>
