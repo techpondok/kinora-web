@@ -1,48 +1,63 @@
 <template>
-  <div class="flex gap-6 min-h-[calc(100vh-8rem)]">
-    <!-- Sidebar Categories -->
-    <nav class="hidden lg:block w-48 flex-shrink-0">
-      <div class="sticky top-20 space-y-1">
-        <button
-          v-for="cat in categories"
-          :key="cat.id"
-          @click="activeCategory = cat.id"
-          :class="[
-            'w-full text-left px-3 py-2 rounded-lg text-sm transition',
-            activeCategory === cat.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
-          ]"
-        >{{ cat.label }}</button>
+  <div class="min-h-[calc(100vh-8rem)] overflow-x-hidden">
+    <!-- Mobile Header -->
+    <div class="lg:hidden flex items-center justify-between mb-4">
+      <div>
+        <h1 class="text-lg font-bold text-gray-900">Pengaturan</h1>
+        <p class="text-xs text-gray-500">{{ categories.find(c => c.id === activeCategory)?.label }}</p>
       </div>
-    </nav>
+      <div class="flex gap-2">
+        <button v-if="isDirty" @click="resetChanges" class="px-3 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">Reset</button>
+        <button @click="saveAll" :disabled="saving" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          {{ saving ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </div>
 
     <!-- Mobile category selector -->
-    <select v-model="activeCategory" class="lg:hidden w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+    <select v-model="activeCategory" class="lg:hidden w-full mb-4 px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white">
       <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.label }}</option>
     </select>
 
-    <!-- Content Area -->
-    <div class="flex-1 space-y-6 min-w-0">
-      <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 class="text-xl font-bold text-gray-900">Subscription & Pricing</h1>
-          <p class="text-sm text-gray-500">Manage plans, pricing, trials, storage, ads, privacy, and protection.</p>
+    <div class="flex gap-6">
+      <!-- Sidebar Categories (desktop/tablet) -->
+      <nav class="hidden lg:block w-56 xl:w-60 flex-shrink-0">
+        <div class="sticky top-20 space-y-1 max-h-[calc(100vh-6rem)] overflow-y-auto">
+          <button
+            v-for="cat in categories"
+            :key="cat.id"
+            @click="activeCategory = cat.id"
+            :class="[
+              'w-full text-left px-3 py-2 rounded-lg text-sm transition',
+              activeCategory === cat.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+            ]"
+          >{{ cat.label }}</button>
         </div>
-        <div class="flex gap-2">
-          <button v-if="isDirty" @click="resetChanges" class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Reset</button>
-          <button @click="saveAll" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-            {{ saving ? 'Saving...' : 'Save Changes' }}
-          </button>
+      </nav>
+
+      <!-- Content Area -->
+      <div class="flex-1 min-w-0 space-y-6">
+        <!-- Header (desktop only) -->
+        <div class="hidden lg:flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 class="text-xl font-bold text-gray-900">Subscription & Pricing</h1>
+            <p class="text-sm text-gray-500">Manage plans, pricing, trials, storage, ads, privacy, and protection.</p>
+          </div>
+          <div class="flex gap-2">
+            <button v-if="isDirty" @click="resetChanges" class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Reset</button>
+            <button @click="saveAll" :disabled="saving" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              {{ saving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- Unsaved warning -->
-      <div v-if="isDirty" class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-        ⚠️ You have unsaved configuration changes.
-      </div>
+        <!-- Unsaved warning -->
+        <div v-if="isDirty" class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+          ⚠️ You have unsaved configuration changes.
+        </div>
 
-      <!-- Loading -->
-      <div v-if="loading" class="text-center py-12 text-gray-500">Memuat konfigurasi...</div>
+        <!-- Loading -->
+        <div v-if="loading" class="text-center py-12 text-gray-500">Memuat konfigurasi...</div>
 
       <!-- Error -->
       <div v-else-if="loadError" class="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{{ loadError }}</div>
@@ -776,6 +791,7 @@
 
       <!-- Save success -->
       <div v-if="saveSuccess" class="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">✓ Konfigurasi tersimpan.</div>
+    </div>
     </div>
   </div>
 </template>
