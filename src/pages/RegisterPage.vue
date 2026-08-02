@@ -21,6 +21,25 @@
 
           <div v-if="error" class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{{ error }}</div>
 
+          <!-- Account Type Selection -->
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">Daftar sebagai:</label>
+            <label class="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition" :class="form.accountType === 'user' ? 'border-blue-400 bg-blue-50/50' : 'border-gray-200 hover:border-gray-300'">
+              <input type="radio" v-model="form.accountType" value="user" class="mt-0.5" />
+              <div>
+                <p class="text-sm font-medium text-gray-900">Pengguna Kinora</p>
+                <p class="text-xs text-gray-500">Untuk mengelola keluarga, keamanan, keuangan, dan aktivitas keluarga.</p>
+              </div>
+            </label>
+            <label class="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition" :class="form.accountType === 'consultant' ? 'border-blue-400 bg-blue-50/50' : 'border-gray-200 hover:border-gray-300'">
+              <input type="radio" v-model="form.accountType" value="consultant" class="mt-0.5" />
+              <div>
+                <p class="text-sm font-medium text-gray-900">Konsultan Kinora</p>
+                <p class="text-xs text-gray-500">Untuk menyediakan layanan konsultasi bagi keluarga di Kinora.</p>
+              </div>
+            </label>
+          </div>
+
           <form @submit.prevent="handleRegister" class="space-y-4">
             <div>
               <label class="block text-xs font-medium text-gray-600 mb-1.5">Nama Lengkap</label>
@@ -60,19 +79,32 @@
 
         <!-- Step: Verify Email -->
         <div v-else-if="step === 'verify'" class="text-center space-y-4">
-          <div class="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center">
-            <span class="text-2xl">📧</span>
+          <div class="w-16 h-16 bg-blue-100 rounded-full mx-auto flex items-center justify-center">
+            <span class="text-2xl">🔐</span>
           </div>
           <h2 class="text-xl font-bold text-gray-900">Verifikasi Email</h2>
-          <p class="text-sm text-gray-500">Kami telah mengirim email verifikasi ke</p>
+          <p class="text-sm text-gray-500">Masukkan kode OTP 6 digit yang dikirim ke</p>
           <p class="text-sm font-medium text-gray-800">{{ form.email }}</p>
-          <p class="text-xs text-gray-400">Periksa inbox dan klik link verifikasi untuk mengaktifkan akun.</p>
-          <button @click="resendVerification" :disabled="resendCooldown > 0" class="mt-4 px-4 py-2 border border-gray-200 rounded-xl text-xs hover:bg-gray-50 disabled:opacity-50">
-            {{ resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : 'Kirim Ulang Email' }}
-          </button>
-          <div class="pt-2">
-            <a href="/login" class="text-xs text-blue-600 hover:underline">Login setelah verifikasi →</a>
+
+          <div v-if="otpError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{{ otpError }}</div>
+
+          <!-- OTP Input -->
+          <div class="flex justify-center gap-2 pt-2">
+            <input v-for="(_, i) in 6" :key="i" :ref="el => otpRefs[i] = el"
+              type="text" inputmode="numeric" maxlength="1"
+              class="w-11 h-13 text-center text-lg font-bold border border-gray-200 rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+              @input="onOtpInput(i, $event)" @keydown="onOtpKeydown(i, $event)" @paste="onOtpPaste($event)" />
           </div>
+
+          <p class="text-xs text-gray-400">Kode berlaku selama 10 menit</p>
+
+          <button @click="verifyOtp" :disabled="otpLoading || otpCode.length < 6" class="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-semibold text-sm shadow-md shadow-blue-200 disabled:opacity-50">
+            {{ otpLoading ? 'Memverifikasi...' : 'Verifikasi' }}
+          </button>
+
+          <button @click="resendOtp" :disabled="resendCooldown > 0" class="px-4 py-2 text-xs text-gray-500 hover:text-blue-600 disabled:opacity-50">
+            {{ resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : 'Kirim Ulang Kode OTP' }}
+          </button>
         </div>
 
         <!-- Step: Invitation -->
@@ -91,14 +123,33 @@
         <!-- Step: Success -->
         <div v-else-if="step === 'success'" class="text-center space-y-4">
           <div class="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center">
-            <span class="text-2xl">🎉</span>
+            <span class="text-2xl">✅</span>
           </div>
-          <h2 class="text-xl font-bold text-gray-900">Selamat Datang!</h2>
-          <p class="text-sm text-gray-500">Akun Kinora Anda berhasil dibuat, {{ form.name }}.</p>
-          <div class="space-y-3 pt-4">
-            <button @click="$router.push('/portal')" class="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold shadow-md shadow-blue-200">Lanjutkan</button>
-            <a href="https://kinorafamilies.com/download" target="_blank" class="block text-xs text-gray-500 hover:text-blue-600">Download Aplikasi Kinora</a>
-          </div>
+          <h2 class="text-xl font-bold text-gray-900">Akun Berhasil Dibuat!</h2>
+          <p class="text-sm text-gray-500">Selamat datang, {{ form.name }}. Email Anda telah terverifikasi.</p>
+
+          <!-- User flow -->
+          <template v-if="form.accountType === 'user'">
+            <p class="text-xs text-gray-400">Buka aplikasi Kinora untuk membuat atau bergabung ke keluarga.</p>
+            <div class="space-y-3 pt-4">
+              <a href="https://kinorafamilies.com/download" target="_blank" class="block w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold shadow-md shadow-blue-200 transition text-center">
+                Buka Aplikasi Kinora
+              </a>
+              <button @click="$router.push('/portal')" class="w-full py-3 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm text-gray-700 transition">
+                Lanjutkan di Web
+              </button>
+            </div>
+          </template>
+
+          <!-- Consultant flow -->
+          <template v-else>
+            <p class="text-xs text-gray-400">Lengkapi profil konsultan Anda untuk mengajukan verifikasi.</p>
+            <div class="space-y-3 pt-4">
+              <button @click="$router.push('/consultant/dashboard')" class="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold shadow-md shadow-blue-200 transition">
+                Lengkapi Profil Konsultan
+              </button>
+            </div>
+          </template>
         </div>
 
         <!-- Footer -->
@@ -111,7 +162,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
 import PublicHeader from '../components/PublicHeader.vue'
@@ -125,6 +176,14 @@ const error = ref('')
 const resendCooldown = ref(0)
 const inviteCode = ref('')
 
+// OTP state
+const otpRefs = ref([])
+const otpValues = ref(['', '', '', '', '', ''])
+const otpError = ref('')
+const otpLoading = ref(false)
+
+const otpCode = computed(() => otpValues.value.join(''))
+
 const form = ref({
   name: '',
   email: '',
@@ -132,6 +191,7 @@ const form = ref({
   confirmPassword: '',
   country: 'ID',
   agree: false,
+  accountType: 'user',
 })
 
 onMounted(() => {
@@ -159,28 +219,128 @@ async function handleRegister() {
   loading.value = true
   const email = form.value.email.trim().toLowerCase()
 
+  // Register without auto-confirm (OTP verification required)
   const { data, error: err } = await supabase.auth.signUp({
     email,
     password: form.value.password,
-    options: { data: { display_name: form.value.name.trim(), country_code: form.value.country } },
+    options: {
+      data: { display_name: form.value.name.trim(), country_code: form.value.country },
+      emailRedirectTo: window.location.origin + '/register?verified=true',
+    },
   })
 
   if (err) { error.value = translateError(err.message); loading.value = false; return }
 
-  if (data.user && !data.session) {
-    step.value = 'verify'
-  } else if (data.session) {
-    await supabase.from('users').update({ display_name: form.value.name.trim(), country_code: form.value.country }).eq('id', data.user.id)
-    step.value = 'success'
-  }
+  // With "Confirm email" enabled, signUp returns user without session
+  // No need to sign out - user is not logged in yet
+  // Go to OTP verification step
+  step.value = 'verify'
   loading.value = false
+  startResendCooldown()
 }
 
-async function resendVerification() {
+// OTP Input handlers
+function onOtpInput(index, event) {
+  const val = event.target.value.replace(/\D/g, '')
+  otpValues.value[index] = val.charAt(0) || ''
+  event.target.value = otpValues.value[index]
+  if (val && index < 5) {
+    otpRefs.value[index + 1]?.focus()
+  }
+}
+
+function onOtpKeydown(index, event) {
+  if (event.key === 'Backspace' && !otpValues.value[index] && index > 0) {
+    otpRefs.value[index - 1]?.focus()
+  }
+}
+
+function onOtpPaste(event) {
+  const paste = (event.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6)
+  if (paste.length === 6) {
+    for (let i = 0; i < 6; i++) {
+      otpValues.value[i] = paste[i]
+      if (otpRefs.value[i]) otpRefs.value[i].value = paste[i]
+    }
+    otpRefs.value[5]?.focus()
+    event.preventDefault()
+  }
+}
+
+async function verifyOtp() {
+  if (otpCode.value.length < 6) { otpError.value = 'Masukkan 6 digit kode OTP.'; return }
+  otpLoading.value = true
+  otpError.value = ''
+
+  // Supabase Confirm signup template with {{ .Token }} uses type 'email'
+  const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+    email: form.value.email.trim().toLowerCase(),
+    token: otpCode.value,
+    type: 'email',
+  })
+
+  if (verifyErr) {
+    otpError.value = verifyErr.message.includes('expired')
+      ? 'Kode OTP sudah kedaluwarsa. Kirim ulang kode.'
+      : 'Kode OTP tidak valid.'
+    otpLoading.value = false
+    return
+  }
+
+  // OTP verified, session created by Supabase - update profile
+  if (data.session && data.user) {
+    await supabase.from('users').update({
+      display_name: form.value.name.trim(),
+      country_code: form.value.country,
+    }).eq('id', data.user.id)
+
+    // If consultant, create consultant_profile with draft status
+    if (form.value.accountType === 'consultant') {
+      const { data: existing } = await supabase
+        .from('kinora_consultants')
+        .select('id')
+        .eq('consultant_user_id', data.user.id)
+        .maybeSingle()
+
+      if (!existing) {
+        await supabase.from('kinora_consultants').insert({
+          consultant_user_id: data.user.id,
+          name: form.value.name.trim(),
+          is_active: false,
+          priority: 0,
+          session_price_amount: 0,
+          price_currency: 'IDR',
+          chat_enabled: true,
+          meeting_enabled: false,
+        })
+      }
+    }
+  }
+
+  // Do NOT sign out - let user proceed
+  otpLoading.value = false
+  step.value = 'success'
+}
+
+async function resendOtp() {
   if (resendCooldown.value > 0) return
-  await supabase.auth.resend({ type: 'signup', email: form.value.email.trim().toLowerCase() })
+  otpError.value = ''
+
+  const { error: err } = await supabase.auth.resend({
+    type: 'signup',
+    email: form.value.email.trim().toLowerCase(),
+  })
+
+  if (err) { otpError.value = 'Gagal mengirim ulang: ' + err.message; return }
+  startResendCooldown()
+}
+
+function startResendCooldown() {
   resendCooldown.value = 60
-  const interval = setInterval(() => { resendCooldown.value--; if (resendCooldown.value <= 0) clearInterval(interval) }, 1000)
+  const interval = setInterval(() => {
+    resendCooldown.value--
+    if (resendCooldown.value <= 0) clearInterval(interval)
+  }, 1000)
 }
 
 async function handleInvitation() {

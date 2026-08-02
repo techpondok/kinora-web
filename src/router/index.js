@@ -19,6 +19,11 @@ const routes = [
     component: () => import('../pages/RegisterPage.vue'),
   },
   {
+    path: '/open-app',
+    name: 'OpenApp',
+    component: () => import('../pages/OpenAppPage.vue'),
+  },
+  {
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: () => import('../pages/ForgotPasswordPage.vue'),
@@ -122,6 +127,95 @@ const routes = [
     props: { type: 'news' },
   },
   {
+    path: '/consultant/login',
+    name: 'ConsultantLogin',
+    component: () => import('../pages/consultant/ConsultantLoginPage.vue'),
+  },
+  {
+    path: '/consultant/dashboard',
+    name: 'ConsultantDashboard',
+    component: () => import('../pages/consultant/DashboardOverview.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/consultations',
+    name: 'ConsultantConsultations',
+    component: () => import('../pages/consultant/ConsultationsListPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/consultations/:consultationId',
+    name: 'ConsultantConsultationDetail',
+    component: () => import('../pages/ConsultantChatPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/consultations/:consultationId/chat',
+    name: 'ConsultantConsultationChat',
+    component: () => import('../pages/ConsultantChatPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/clients',
+    name: 'ConsultantClients',
+    component: () => import('../pages/consultant/ClientsPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/schedule',
+    name: 'ConsultantSchedule',
+    component: () => import('../pages/consultant/SchedulePage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/services',
+    name: 'ConsultantServices',
+    component: () => import('../pages/consultant/ServicesPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/notes',
+    name: 'ConsultantNotes',
+    component: () => import('../pages/consultant/NotesPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/earnings',
+    name: 'ConsultantEarnings',
+    component: () => import('../pages/consultant/EarningsPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/withdrawals',
+    name: 'ConsultantWithdrawals',
+    component: () => import('../pages/consultant/WithdrawalsPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/reviews',
+    name: 'ConsultantReviews',
+    component: () => import('../pages/consultant/ReviewsPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/notifications',
+    name: 'ConsultantNotifications',
+    component: () => import('../pages/consultant/NotificationsPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
+    path: '/consultant/profile',
+    name: 'ConsultantProfile',
+    component: () => import('../pages/consultant/ProfilePage.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/consultant/settings',
+    name: 'ConsultantSettings',
+    component: () => import('../pages/consultant/SettingsPage.vue'),
+    meta: { requiresAuth: true, consultantOnly: true },
+  },
+  {
     path: '/consultant/sessions',
     name: 'ConsultantSessions',
     component: () => import('../pages/ConsultantSessionsPage.vue'),
@@ -132,12 +226,6 @@ const routes = [
     name: 'ConsultantChat',
     component: () => import('../pages/ConsultantChatPage.vue'),
     meta: { requiresAuth: true },
-  },
-  {
-    path: '/consultant/dashboard',
-    name: 'ConsultantDashboard',
-    component: () => import('../pages/ConsultantDashboardPage.vue'),
-    meta: { requiresAuth: true, consultantOnly: true },
   },
 ]
 
@@ -191,8 +279,8 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.consultantOnly && session) {
     const isCons = await isConsultant(session.user.id)
     if (!isCons) {
-      const isAdmin = await isAdminOrFounder(session.user.id)
-      return next(isAdmin ? { name: 'Dashboard' } : { name: 'UserPortal' })
+      // Not a consultant - redirect to consultant registration page (not admin/user portal)
+      return next({ name: 'ConsultantLogin' })
     }
   }
 

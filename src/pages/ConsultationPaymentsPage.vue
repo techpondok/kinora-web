@@ -101,8 +101,9 @@
           </div>
           <div v-if="po.status === 'pending_approval' || po.status === 'approved'" class="flex gap-2 pt-2 border-t border-gray-100">
             <button v-if="po.status === 'pending_approval'" @click="approvePayout(po)" class="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button>
+            <button v-if="po.status === 'pending_approval'" @click="rejectPayout(po)" class="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
             <button v-if="po.status === 'approved'" @click="markPayoutPaid(po)" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg">Mark Paid</button>
-            <input v-model="po._reference" type="text" class="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs outline-none" placeholder="Transfer reference..." />
+            <input v-model="po._reference" type="text" class="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs outline-none" placeholder="Transfer reference / alasan..." />
           </div>
           <div v-if="po.transfer_reference" class="text-xs text-gray-400">Ref: {{ po.transfer_reference }} · Paid: {{ formatDate(po.paid_at) }}</div>
         </div>
@@ -332,6 +333,19 @@ async function approvePayout(po) {
   await supabase.from('kinora_consultant_payouts')
     .update({ status: 'approved', approved_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', po.id)
+  await fetchAll()
+}
+
+async function rejectPayout(po) {
+  const reason = po._reference || ''
+  if (!reason) { alert('Masukkan alasan penolakan.'); return }
+  await supabase.from('kinora_consultant_payouts')
+    .update({ status: 'cancelled', admin_note: reason, updated_at: new Date().toISOString() })
+    .eq('id', po.id)
+  // Return linked earnings back to confirmed (available)
+  await supabase.from('kinora_consultant_earnings')
+    .update({ payout_id: null, status: 'confirmed', updated_at: new Date().toISOString() })
+    .eq('payout_id', po.id)
   await fetchAll()
 }
 

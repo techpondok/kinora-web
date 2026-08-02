@@ -29,46 +29,83 @@
       </header>
 
       <!-- HERO -->
-      <section class="relative overflow-hidden bg-gradient-to-b from-amber-50 to-white py-16 sm:py-24 px-4 sm:px-6">
-        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div class="space-y-6 hero-stagger" :class="loaded ? 'hero-visible' : ''">
-            <span v-if="cfg('hero').badge" data-animate class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">
+      <section class="relative overflow-hidden py-20 sm:py-28 px-4 sm:px-6">
+        <!-- Background decorative -->
+        <div class="absolute inset-0 -z-10">
+          <div class="absolute top-20 left-10 w-72 h-72 bg-amber-100 rounded-full blur-3xl opacity-40"></div>
+          <div class="absolute bottom-10 right-20 w-96 h-96 bg-orange-50 rounded-full blur-3xl opacity-50"></div>
+          <div class="absolute top-40 right-40 w-32 h-32 bg-teal-50 rounded-full blur-2xl opacity-60"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <!-- Left: Copy -->
+          <div class="space-y-7 hero-stagger" :class="loaded ? 'hero-visible' : ''">
+            <span v-if="cfg('hero').badge" data-animate class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-amber-100/80 text-amber-800 text-xs font-semibold rounded-full backdrop-blur-sm border border-amber-200/50">
               <Heart :size="12" class="text-amber-600" /> {{ cfg('hero').badge }}
             </span>
-            <h1 data-animate class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+            <h1 data-animate class="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold text-gray-900 leading-[1.15] tracking-tight">
               {{ cfg('hero').title || 'Satu aplikasi untuk menjaga, mengatur, dan mendekatkan keluarga.' }}
             </h1>
-            <p data-animate class="text-base sm:text-lg text-gray-600 leading-relaxed max-w-lg">
+            <p data-animate class="text-lg text-gray-500 leading-relaxed max-w-lg">
               {{ cfg('hero').description || 'Kinora membantu keluarga tetap terhubung, lebih aman, lebih teratur, dan lebih dekat.' }}
             </p>
-            <!-- Benefits mini -->
-            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
-              <div class="flex items-center gap-2"><MapPin :size="16" class="text-amber-600" /> Lokasi & Safe Zone</div>
-              <div class="flex items-center gap-2"><Shield :size="16" class="text-amber-600" /> SOS & Perlindungan</div>
-              <div class="flex items-center gap-2"><MessageCircle :size="16" class="text-amber-600" /> Chat & Kalender</div>
-              <div class="flex items-center gap-2"><Wallet :size="16" class="text-amber-600" /> Keuangan & Kesehatan</div>
-            </div>
+
             <!-- CTA -->
             <div data-animate class="flex flex-wrap gap-3 pt-2">
-              <a :href="cfg('general').web_app || '/register'" class="px-6 py-3 bg-amber-500 text-white rounded-full hover:bg-amber-600 transition font-semibold shadow-md text-sm sm:text-base btn-press">
+              <a :href="cfg('general').web_app || '/register'" class="px-7 py-3.5 bg-amber-500 text-white rounded-full hover:bg-amber-600 transition font-semibold shadow-lg shadow-amber-200/50 text-sm sm:text-base btn-press">
                 {{ cfg('hero').cta_primary || 'Mulai Gratis' }}
               </a>
-              <a :href="cfg('hero').cta_secondary_link || '#features'" class="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-full hover:border-amber-300 hover:bg-amber-50 transition font-medium text-sm sm:text-base">
-                {{ cfg('hero').cta_secondary || 'Download Sekarang' }}
+              <a :href="cfg('hero').cta_secondary_link || '#features'" class="px-7 py-3.5 bg-white border border-gray-200 text-gray-700 rounded-full hover:border-amber-300 hover:shadow-md transition font-medium text-sm sm:text-base">
+                {{ cfg('hero').cta_secondary || 'Lihat Fitur' }}
               </a>
             </div>
             <!-- Store badges -->
-            <div v-if="cfg('general').play_store || cfg('general').app_store" class="flex items-center gap-3 pt-2">
-              <a v-if="cfg('general').play_store" :href="cfg('general').play_store" target="_blank" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition">Google Play</a>
-              <a v-if="cfg('general').app_store" :href="cfg('general').app_store" target="_blank" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition">App Store</a>
+            <div v-if="cfg('general').play_store || cfg('general').app_store" class="flex items-center gap-3 pt-1">
+              <a v-if="cfg('general').play_store" :href="cfg('general').play_store" target="_blank" class="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-medium hover:bg-gray-800 transition flex items-center gap-2">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.84 2.15L13.69 12L3.84 21.85C3.34 21.6 3 21.09 3 20.5M16.81 15.12L6.05 21.34L14.54 12.85L16.81 15.12M20.16 10.81C20.5 11.08 20.75 11.5 20.75 12C20.75 12.5 20.53 12.9 20.18 13.18L17.89 14.5L15.39 12L17.89 9.5L20.16 10.81M6.05 2.66L16.81 8.88L14.54 11.15L6.05 2.66Z"/></svg>
+                Google Play
+              </a>
+              <a v-if="cfg('general').app_store" :href="cfg('general').app_store" target="_blank" class="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-medium hover:bg-gray-800 transition flex items-center gap-2">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5M13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
+                App Store
+              </a>
             </div>
           </div>
-          <div class="hidden lg:flex justify-center">
-            <div v-if="cfg('hero').image_url" class="relative animate-float">
-              <img :src="cfg('hero').image_url" alt="Keluarga menggunakan Kinora" class="w-full max-w-md rounded-3xl shadow-2xl" />
+
+          <!-- Right: Illustration + Floating Cards -->
+          <div class="hidden lg:block relative">
+            <div v-if="cfg('hero').image_url" class="relative">
+              <img :src="cfg('hero').image_url" alt="Keluarga menggunakan Kinora" class="w-full max-w-lg mx-auto rounded-3xl" loading="eager" />
             </div>
-            <div v-else class="w-80 h-96 bg-amber-100 rounded-3xl flex items-center justify-center animate-float">
-              <Users :size="80" class="text-amber-300" />
+            <div v-else class="relative w-full max-w-lg mx-auto">
+              <!-- Storyset illustration placeholder -->
+              <img src="https://cdn.storyset.com/illustration/preview/1000/416/family-values-amico.png" alt="Family illustration" class="w-full" loading="eager" />
+            </div>
+
+            <!-- Floating cards -->
+            <div class="absolute top-8 -left-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 p-3 animate-float">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"><MapPin :size="14" class="text-green-600" /></div>
+                <div><p class="text-[11px] font-medium text-gray-900">Raka tiba di sekolah</p><p class="text-[10px] text-green-600">🟢 Safe Zone</p></div>
+              </div>
+            </div>
+            <div class="absolute bottom-16 -left-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 p-3 animate-float" style="animation-delay: 1s">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center"><MessageCircle :size="14" class="text-blue-600" /></div>
+                <div><p class="text-[11px] font-medium text-gray-900">Family Chat</p><p class="text-[10px] text-gray-400">Papa mengirim pesan</p></div>
+              </div>
+            </div>
+            <div class="absolute top-1/2 -right-6 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 p-3 animate-float" style="animation-delay: 2s">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center"><Calendar :size="14" class="text-amber-600" /></div>
+                <div><p class="text-[11px] font-medium text-gray-900">Family Time</p><p class="text-[10px] text-gray-400">19.00 · Makan malam</p></div>
+              </div>
+            </div>
+            <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 p-3 animate-float" style="animation-delay: 0.5s">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"><Heart :size="14" class="text-red-500" /></div>
+                <p class="text-[11px] font-medium text-gray-900">Semua anggota aman ❤️</p>
+              </div>
             </div>
           </div>
         </div>
@@ -87,45 +124,147 @@
         </div>
       </section>
 
-      <!-- PROBLEMS -->
-      <section class="py-16 sm:py-20 px-4 sm:px-6">
-        <div class="max-w-5xl mx-auto text-center">
-          <h2 data-animate class="text-2xl sm:text-3xl font-bold text-gray-900">Keluarga sering menghadapi hal-hal ini</h2>
-          <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div data-animate data-delay="0" class="p-5 bg-red-50 rounded-2xl text-left flex items-start gap-3 card-hover"><MapPin :size="18" class="text-red-400 mt-0.5 flex-shrink-0" /><p class="text-sm text-gray-700">Sulit mengetahui kondisi anggota keluarga saat tidak bersama.</p></div>
-            <div data-animate data-delay="100" class="p-5 bg-orange-50 rounded-2xl text-left flex items-start gap-3 card-hover"><Calendar :size="18" class="text-orange-400 mt-0.5 flex-shrink-0" /><p class="text-sm text-gray-700">Jadwal dan tugas keluarga tercecer di banyak tempat.</p></div>
-            <div data-animate data-delay="200" class="p-5 bg-yellow-50 rounded-2xl text-left flex items-start gap-3 card-hover"><Smartphone :size="18" class="text-yellow-500 mt-0.5 flex-shrink-0" /><p class="text-sm text-gray-700">Anak terlalu lama menggunakan perangkat tanpa kontrol.</p></div>
-            <div data-animate data-delay="300" class="p-5 bg-blue-50 rounded-2xl text-left flex items-start gap-3 card-hover"><Wallet :size="18" class="text-blue-400 mt-0.5 flex-shrink-0" /><p class="text-sm text-gray-700">Pengeluaran keluarga sulit dipantau bersama.</p></div>
-            <div data-animate data-delay="400" class="p-5 bg-purple-50 rounded-2xl text-left flex items-start gap-3 card-hover"><Camera :size="18" class="text-purple-400 mt-0.5 flex-shrink-0" /><p class="text-sm text-gray-700">Momen penting keluarga tidak tersimpan rapi.</p></div>
-            <div data-animate data-delay="500" class="p-5 bg-green-50 rounded-2xl text-left flex items-start gap-3 card-hover"><Pill :size="18" class="text-green-400 mt-0.5 flex-shrink-0" /><p class="text-sm text-gray-700">Pengingat kesehatan dan vaksinasi sering terlewat.</p></div>
+      <!-- STORY SECTION -->
+      <section class="py-20 sm:py-28 px-4 sm:px-6">
+        <div class="max-w-5xl mx-auto">
+          <div class="text-center mb-16">
+            <h2 data-animate class="text-2xl sm:text-3xl font-bold text-gray-900">Bagaimana Kinora menjaga keluarga Anda</h2>
+            <p class="mt-3 text-gray-500 max-w-2xl mx-auto">Cerita nyata dari keseharian keluarga yang menggunakan Kinora.</p>
           </div>
-          <p class="mt-8 text-base text-gray-600 max-w-2xl mx-auto">Kinora menyatukan kebutuhan keluarga dalam satu tempat yang mudah digunakan.</p>
-        </div>
-      </section>
 
-      <!-- FEATURES -->
-      <section id="features" class="py-16 sm:py-20 px-4 sm:px-6 bg-amber-50/50">
-        <div class="max-w-6xl mx-auto">
-          <div class="text-center mb-12">
-            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Semua yang keluarga butuhkan</h2>
-            <p class="mt-3 text-gray-600 max-w-2xl mx-auto">Fitur lengkap yang dirancang khusus untuk keluarga Indonesia.</p>
-          </div>
-          <!-- Feature groups -->
-          <div class="space-y-12">
-            <div v-for="group in featureGroups" :key="group.title" class="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm">
-              <h3 class="font-bold text-gray-900 text-lg mb-1">{{ group.title }}</h3>
-              <p class="text-sm text-gray-500 mb-5">{{ group.desc }}</p>
-              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div v-for="f in group.items" :key="f" class="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 px-3 py-2 rounded-lg">
-                  <component :is="iconComponents[group.icon] || Star" :size="14" class="text-amber-600 flex-shrink-0" /> {{ f }}
+          <!-- Story cards with illustrations -->
+          <div class="space-y-16">
+            <!-- Story 1 -->
+            <div data-animate class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+              <div class="order-2 lg:order-1">
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-8 border border-green-100">
+                  <img src="https://stories.freepiklabs.com/api/vectors/high-school/cuate/render?color=&background=complete&hide=" alt="Anak tiba di sekolah" class="w-full max-w-xs mx-auto" loading="lazy" />
+                </div>
+              </div>
+              <div class="order-1 lg:order-2 space-y-4">
+                <span class="text-xs font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full">📍 Safe Zone</span>
+                <h3 class="text-xl font-bold text-gray-900">Ayah bekerja dengan tenang</h3>
+                <p class="text-gray-500 leading-relaxed">Pagi hari, Ayah berangkat kerja. Kinora otomatis memberi tahu saat Raka tiba di sekolah dengan selamat. Tidak perlu bertanya lewat chat — notifikasi sudah cukup.</p>
+                <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center"><MapPin :size="16" class="text-green-600" /></div>
+                    <div><p class="text-sm font-medium text-gray-900">Raka tiba di SD Harapan Bangsa</p><p class="text-xs text-gray-400">07:15 · Safe Zone aktif</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Story 2 -->
+            <div data-animate class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+              <div class="space-y-4">
+                <span class="text-xs font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">📅 Family Calendar</span>
+                <h3 class="text-xl font-bold text-gray-900">Ibu tidak pernah lupa jadwal</h3>
+                <p class="text-gray-500 leading-relaxed">Vaksinasi anak, jadwal les, makan malam bersama — semua tercatat di kalender keluarga. Pengingat otomatis memastikan tidak ada yang terlewat.</p>
+                <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center"><Calendar :size="16" class="text-blue-600" /></div>
+                    <div><p class="text-sm font-medium text-gray-900">Vaksinasi Raka — Besok 09:00</p><p class="text-xs text-gray-400">Reminder aktif · RS Bunda</p></div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-100">
+                  <img src="https://stories.freepiklabs.com/api/vectors/calendar/bro/render?color=&background=complete&hide=" class="w-full max-w-xs mx-auto" loading="lazy" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Story 3 -->
+            <div data-animate class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+              <div class="order-2 lg:order-1">
+                <div class="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-8 border border-red-100">
+                  <img src="https://stories.freepiklabs.com/api/vectors/emergency-call/pana/render?color=&background=complete&hide=" alt="SOS keamanan" class="w-full max-w-xs mx-auto" loading="lazy" />
+                </div>
+              </div>
+              <div class="order-1 lg:order-2 space-y-4">
+                <span class="text-xs font-medium text-red-600 bg-red-50 px-3 py-1 rounded-full">🆘 Emergency SOS</span>
+                <h3 class="text-xl font-bold text-gray-900">Dalam keadaan darurat, satu sentuhan cukup</h3>
+                <p class="text-gray-500 leading-relaxed">Anak menekan tombol SOS. Dalam hitungan detik, kedua orang tua menerima notifikasi beserta lokasi terkini. Tidak perlu telepon, tidak perlu penjelasan panjang.</p>
+                <div class="bg-white rounded-xl border border-red-100 p-4 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center"><AlertTriangle :size="16" class="text-red-600" /></div>
+                    <div><p class="text-sm font-medium text-red-700">🚨 SOS dari Raka</p><p class="text-xs text-gray-400">Lokasi: Jl. Sudirman 45 · Baru saja</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Story 4: Keuangan -->
+            <div data-animate class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+              <div class="space-y-4">
+                <span class="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full">💰 Family Finance</span>
+                <h3 class="text-xl font-bold text-gray-900">Keuangan keluarga transparan dan terkontrol</h3>
+                <p class="text-gray-500 leading-relaxed">Pengeluaran harian, tabungan keluarga, dan anggaran bulanan — semua tercatat bersama. Tidak ada lagi pertanyaan "uangnya ke mana?"</p>
+                <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center"><Wallet :size="16" class="text-amber-600" /></div>
+                    <div><p class="text-sm font-medium text-gray-900">Pengeluaran Agustus: Rp 4.250.000</p><p class="text-xs text-gray-400">Budget tersisa Rp 1.750.000 · On track ✓</p></div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-3xl p-8 border border-amber-100">
+                  <img src="https://stories.freepiklabs.com/api/vectors/saving-money/bro/render?color=&background=complete&hide=" alt="Keuangan keluarga" class="w-full max-w-xs mx-auto" loading="lazy" />
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- FEATURES -->
+      <section id="features" class="py-20 sm:py-28 px-4 sm:px-6 bg-gradient-to-b from-gray-50/50 to-white">
+        <div class="max-w-6xl mx-auto">
+          <div class="text-center mb-16">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Semua yang keluarga butuhkan</h2>
+            <p class="mt-3 text-gray-500 max-w-2xl mx-auto">Fitur lengkap yang dirancang khusus untuk keluarga Indonesia.</p>
+          </div>
+
+          <!-- Feature illustration cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-for="(group, idx) in featureGroups" :key="group.title" data-animate :data-delay="idx * 100" class="group bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-amber-200 transition-all duration-300 overflow-hidden relative">
+              <!-- Decorative gradient -->
+              <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity" :class="[
+                idx === 0 ? 'from-emerald-400 to-teal-400' : '',
+                idx === 1 ? 'from-blue-400 to-indigo-400' : '',
+                idx === 2 ? 'from-pink-400 to-red-400' : '',
+                idx === 3 ? 'from-purple-400 to-violet-400' : '',
+                idx === 4 ? 'from-amber-400 to-orange-400' : '',
+              ]"></div>
+
+              <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" :class="[
+                idx === 0 ? 'bg-emerald-50' : '',
+                idx === 1 ? 'bg-blue-50' : '',
+                idx === 2 ? 'bg-pink-50' : '',
+                idx === 3 ? 'bg-purple-50' : '',
+                idx === 4 ? 'bg-amber-50' : '',
+              ]">
+                <component :is="iconComponents[group.icon] || Star" :size="22" :class="[
+                  idx === 0 ? 'text-emerald-600' : '',
+                  idx === 1 ? 'text-blue-600' : '',
+                  idx === 2 ? 'text-pink-600' : '',
+                  idx === 3 ? 'text-purple-600' : '',
+                  idx === 4 ? 'text-amber-600' : '',
+                ]" />
+              </div>
+              <h3 class="font-bold text-gray-900 mb-1">{{ group.title }}</h3>
+              <p class="text-sm text-gray-500 mb-4">{{ group.desc }}</p>
+              <div class="flex flex-wrap gap-1.5">
+                <span v-for="f in group.items.slice(0, 4)" :key="f" class="px-2.5 py-1 text-xs bg-gray-50 text-gray-600 rounded-lg">{{ f }}</span>
+                <span v-if="group.items.length > 4" class="px-2.5 py-1 text-xs text-amber-600 font-medium">+{{ group.items.length - 4 }}</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Dynamic features from admin -->
-          <div v-if="activeFeatures.length" class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div v-for="f in activeFeatures" :key="f.title" class="bg-white rounded-xl p-5 border border-gray-100 hover:border-amber-200 transition">
-              <div class="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center mb-3"><component :is="featureIcon(f.icon)" :size="18" class="text-amber-700" /></div>
+          <div v-if="activeFeatures.length" class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="f in activeFeatures" :key="f.title" class="bg-white rounded-xl p-5 border border-gray-100 hover:border-amber-200 hover:shadow-md transition-all duration-300">
+              <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-3"><component :is="featureIcon(f.icon)" :size="18" class="text-amber-700" /></div>
               <h4 class="font-semibold text-gray-900 text-sm">{{ f.title }}</h4>
               <p class="mt-1.5 text-xs text-gray-500 leading-relaxed">{{ f.description }}</p>
             </div>
@@ -301,16 +440,28 @@
       </section>
 
       <!-- TESTIMONIALS -->
-      <section v-if="activeTestimonials.length" class="py-16 sm:py-20 px-4 sm:px-6 bg-amber-50/50">
+      <section v-if="activeTestimonials.length" class="py-20 sm:py-28 px-4 sm:px-6">
         <div class="max-w-5xl mx-auto">
-          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 text-center">Apa kata mereka</h2>
-          <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div v-for="t in activeTestimonials" :key="t.name" class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <div class="flex gap-0.5 mb-3"><Star v-for="i in (t.rating || 5)" :key="i" :size="14" class="text-amber-400 fill-amber-400" /></div>
-              <p class="text-sm text-gray-700 leading-relaxed italic">"{{ t.text }}"</p>
-              <div class="mt-4 flex items-center gap-3">
-                <div class="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center text-xs font-bold text-amber-700">{{ t.name?.charAt(0) }}</div>
-                <div><p class="text-sm font-semibold text-gray-900">{{ t.name }}</p><p class="text-xs text-gray-500">{{ t.role }}</p></div>
+          <div class="text-center mb-14">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Dipercaya oleh keluarga Indonesia</h2>
+            <p class="mt-3 text-gray-500">Cerita dari keluarga yang telah merasakan manfaat Kinora.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div v-for="(t, idx) in activeTestimonials" :key="t.name" data-animate :data-delay="idx * 100" class="bg-white rounded-2xl p-7 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <!-- Rating -->
+              <div class="flex gap-0.5 mb-4">
+                <Star v-for="i in (t.rating || 5)" :key="i" :size="16" class="text-amber-400 fill-amber-400" />
+              </div>
+              <!-- Quote -->
+              <p class="text-sm text-gray-700 leading-relaxed">"{{ t.text }}"</p>
+              <!-- Author -->
+              <div class="mt-5 flex items-center gap-3 pt-4 border-t border-gray-50">
+                <img v-if="t.photo" :src="t.photo" :alt="t.name" class="w-11 h-11 rounded-full object-cover border-2 border-gray-100" loading="lazy" />
+                <div v-else class="w-11 h-11 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center text-sm font-bold text-amber-700">{{ t.name?.charAt(0) }}</div>
+                <div>
+                  <p class="text-sm font-semibold text-gray-900">{{ t.name }}</p>
+                  <p class="text-xs text-gray-400">{{ t.role }}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -336,13 +487,22 @@
       </section>
 
       <!-- FINAL CTA -->
-      <section class="py-16 sm:py-20 px-4 sm:px-6">
-        <div class="max-w-3xl mx-auto text-center bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-10 sm:p-14 border border-amber-100" data-animate="scale">
-          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Mulai bangun keluarga yang lebih aman, teratur, dan dekat</h2>
-          <p class="mt-4 text-gray-600">Gratis untuk memulai. Upgrade kapan saja.</p>
-          <div class="mt-8 flex flex-wrap justify-center gap-3">
-            <a :href="cfg('general').web_app || '/register'" class="px-8 py-3 bg-amber-500 text-white rounded-full hover:bg-amber-600 transition font-semibold shadow-md btn-press">Mulai Gratis</a>
-            <a v-if="cfg('general').play_store" :href="cfg('general').play_store" target="_blank" class="px-6 py-3 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition font-medium text-sm btn-press">Download App</a>
+      <section class="py-20 sm:py-28 px-4 sm:px-6">
+        <div class="max-w-4xl mx-auto relative">
+          <!-- Decorative blobs -->
+          <div class="absolute -top-10 -left-10 w-40 h-40 bg-amber-100 rounded-full blur-3xl opacity-40"></div>
+          <div class="absolute -bottom-10 -right-10 w-56 h-56 bg-orange-100 rounded-full blur-3xl opacity-30"></div>
+
+          <div class="relative text-center bg-white rounded-[2rem] p-12 sm:p-16 border border-gray-100 shadow-xl" data-animate="scale">
+            <div class="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Heart :size="28" class="text-amber-600" />
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Mulai bangun keluarga yang lebih aman, teratur, dan dekat</h2>
+            <p class="mt-4 text-gray-500 max-w-xl mx-auto">Gratis untuk memulai. Tidak perlu kartu kredit. Upgrade kapan saja sesuai kebutuhan keluarga.</p>
+            <div class="mt-8 flex flex-wrap justify-center gap-3">
+              <a :href="cfg('general').web_app || '/register'" class="px-8 py-3.5 bg-amber-500 text-white rounded-full hover:bg-amber-600 transition font-semibold shadow-lg shadow-amber-200/50 btn-press">Mulai Gratis</a>
+              <a v-if="cfg('general').play_store" :href="cfg('general').play_store" target="_blank" class="px-6 py-3.5 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition font-medium text-sm btn-press">Download App</a>
+            </div>
           </div>
         </div>
       </section>
