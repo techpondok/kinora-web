@@ -28,6 +28,7 @@
           </div>
         </div>
         <div class="flex gap-2">
+          <button @click="viewRegistrations(w)" class="text-xs text-purple-600 hover:underline">Peserta</button>
           <button @click="editingWebinar = {...w}; showEditor = true" class="text-xs text-blue-600 hover:underline">Edit</button>
           <button @click="togglePublish(w)" class="text-xs" :class="w.is_published ? 'text-orange-600' : 'text-green-600'">{{ w.is_published ? 'Unpublish' : 'Publish' }}</button>
           <button @click="confirmDelete(w)" class="text-xs text-red-600 hover:underline">Hapus</button>
@@ -99,11 +100,84 @@
           <textarea v-model="editingWebinar.payment_instructions" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"></textarea>
         </div>
 
+        <!-- Registration & Quota -->
+        <div class="border-t border-gray-100 pt-4 space-y-3">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase">Pendaftaran & Kuota</h4>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Mode Pendaftaran</label>
+              <select v-model="editingWebinar.registration_mode" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                <option value="open">Langsung (Open)</option>
+                <option value="approval">Memerlukan Persetujuan</option>
+                <option value="invitation">Undangan Saja</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Maks Peserta</label>
+              <input v-model.number="editingWebinar.max_participants" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="0 = tanpa batas" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Deadline Pendaftaran</label>
+              <input v-model="editingWebinar.registration_deadline" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Link Tampil (menit sebelum)</label>
+              <input v-model.number="editingWebinar.link_visible_before_minutes" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="60" />
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingWebinar.allow_waiting_list" class="rounded" /> Izinkan Waiting List</label>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Slug</label>
+            <input v-model="editingWebinar.slug" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono outline-none" placeholder="auto-generated" />
+          </div>
+        </div>
+
         <div class="flex justify-end gap-3 pt-2">
           <button @click="showEditor = false; editorError = ''" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Batal</button>
           <button @click="saveWebinar" :disabled="savingWebinar" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
             {{ savingWebinar ? 'Menyimpan...' : 'Simpan' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registrations Drawer -->
+    <div v-if="showRegistrations" class="fixed inset-0 z-50 flex justify-end">
+      <div @click="showRegistrations = false" class="absolute inset-0 bg-black/40"></div>
+      <div class="relative bg-white w-full max-w-xl h-full overflow-y-auto shadow-2xl">
+        <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+          <div>
+            <h3 class="font-bold text-gray-900">Peserta Webinar</h3>
+            <p class="text-xs text-gray-500">{{ selectedWebinar?.title }}</p>
+          </div>
+          <button @click="showRegistrations = false" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <!-- Stats -->
+          <div class="grid grid-cols-4 gap-3">
+            <div class="text-center p-2 bg-gray-50 rounded-lg"><p class="text-lg font-bold text-gray-900">{{ registrations.length }}</p><p class="text-[10px] text-gray-500">Total</p></div>
+            <div class="text-center p-2 bg-green-50 rounded-lg"><p class="text-lg font-bold text-green-700">{{ registrations.filter(r => ['approved','registered','paid','attended'].includes(r.status)).length }}</p><p class="text-[10px] text-gray-500">Approved</p></div>
+            <div class="text-center p-2 bg-amber-50 rounded-lg"><p class="text-lg font-bold text-amber-700">{{ registrations.filter(r => r.status === 'pending').length }}</p><p class="text-[10px] text-gray-500">Pending</p></div>
+            <div class="text-center p-2 bg-blue-50 rounded-lg"><p class="text-lg font-bold text-blue-700">{{ registrations.filter(r => r.status === 'waitlisted').length }}</p><p class="text-[10px] text-gray-500">Waitlist</p></div>
+          </div>
+          <!-- List -->
+          <div v-if="registrations.length === 0" class="text-center py-8 text-gray-400 text-sm">Belum ada peserta.</div>
+          <div v-else class="space-y-2">
+            <div v-for="r in registrations" :key="r.id" class="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
+              <div>
+                <p class="text-sm font-medium text-gray-900">{{ r.user_name || 'User' }}</p>
+                <p class="text-xs text-gray-500">{{ formatDate(r.registered_at) }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="regStatusClass(r.status)">{{ r.status }}</span>
+                <button v-if="r.status === 'pending'" @click="approveReg(r)" class="text-xs text-green-600 hover:underline">Approve</button>
+                <button v-if="r.status === 'pending'" @click="rejectReg(r)" class="text-xs text-red-600 hover:underline">Reject</button>
+                <button v-if="r.status === 'waitlisted'" @click="promoteReg(r)" class="text-xs text-blue-600 hover:underline">Promote</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -221,6 +295,42 @@ async function doDelete() {
   await supabase.from('kinora_webinars').delete().eq('id', deletingWebinar.value.id)
   deletingWebinar.value = null
   loadWebinars()
+}
+
+// --- Registrations ---
+const showRegistrations = ref(false)
+const selectedWebinar = ref(null)
+const registrations = ref([])
+
+async function viewRegistrations(w) {
+  selectedWebinar.value = w
+  showRegistrations.value = true
+  const { data } = await supabase
+    .from('kinora_webinar_registrations')
+    .select('*, user:users!kinora_webinar_registrations_user_id_fkey(display_name)')
+    .eq('webinar_id', w.id)
+    .order('registered_at', { ascending: true })
+  registrations.value = (data || []).map(r => ({ ...r, user_name: r.user?.display_name }))
+}
+
+function regStatusClass(s) {
+  const map = { pending: 'bg-amber-100 text-amber-700', approved: 'bg-green-100 text-green-700', registered: 'bg-green-100 text-green-700', paid: 'bg-green-100 text-green-700', waitlisted: 'bg-blue-100 text-blue-700', rejected: 'bg-red-100 text-red-600', cancelled: 'bg-gray-100 text-gray-500', attended: 'bg-emerald-100 text-emerald-700' }
+  return map[s] || 'bg-gray-100 text-gray-500'
+}
+
+async function approveReg(r) {
+  await supabase.from('kinora_webinar_registrations').update({ status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', r.id)
+  r.status = 'approved'
+}
+
+async function rejectReg(r) {
+  await supabase.from('kinora_webinar_registrations').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', r.id)
+  r.status = 'rejected'
+}
+
+async function promoteReg(r) {
+  await supabase.from('kinora_webinar_registrations').update({ status: 'approved', promoted_at: new Date().toISOString() }).eq('id', r.id)
+  r.status = 'approved'
 }
 
 onMounted(loadWebinars)

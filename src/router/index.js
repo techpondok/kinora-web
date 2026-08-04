@@ -39,6 +39,11 @@ const routes = [
     component: () => import('../pages/AboutPage.vue'),
   },
   {
+    path: '/safe-browsing',
+    name: 'SafeBrowsing',
+    component: () => import('../pages/SafeBrowsingPage.vue'),
+  },
+  {
     path: '/help/category/:slug',
     name: 'HelpCategory',
     component: () => import('../pages/HelpCategoryPage.vue'),
