@@ -1,6 +1,4 @@
-export default function handler(req, res) {
-  const domain = 'https://kinorafamilies.com'
-
+module.exports = function handler(req, res) {
   const content = `User-agent: *
 Allow: /
 Disallow: /dashboard/
@@ -12,7 +10,7 @@ Disallow: /register
 Disallow: /forgot-password
 Disallow: /help/my-tickets
 
-Sitemap: ${domain}/sitemap.xml
+Sitemap: https://kinorafamilies.com/sitemap.xml
 `
 
   res.setHeader('Content-Type', 'text/plain; charset=UTF-8')
