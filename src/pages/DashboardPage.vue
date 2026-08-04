@@ -32,29 +32,43 @@
             'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
             activeMenu === item.id
               ? 'bg-blue-50 text-blue-700'
-              : 'text-gray-600 hover:bg-gray-100'
+              : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
           ]"
         >
-          {{ item.label }}
+          <component :is="item.icon" :size="18" class="flex-shrink-0" />
+          <span>{{ item.label }}</span>
         </button>
       </nav>
 
-      <!-- User info (fixed bottom) -->
-      <div class="flex-shrink-0 p-3 border-t border-gray-200">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-            <img v-if="profile?.avatar_url" :src="profile.avatar_url" class="w-full h-full object-cover" />
-            <span v-else class="text-xs font-medium text-blue-700">
-              {{ profile?.display_name?.charAt(0)?.toUpperCase() || '?' }}
+      <!-- Landing Page Button + User info -->
+      <div class="flex-shrink-0 border-t border-gray-200">
+        <div class="px-3 pt-3">
+          <a href="https://kinorafamilies.com" target="_blank" rel="noopener noreferrer"
+            class="flex items-center justify-between w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition">
+            <span class="flex items-center gap-2">
+              <Globe :size="16" />
+              <span class="font-medium">Lihat Landing Page</span>
             </span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-xs font-medium text-gray-700 truncate">{{ profile?.display_name || authUser?.email }}</p>
-          </div>
+            <ExternalLink :size="14" class="opacity-50" />
+          </a>
         </div>
-        <button @click="handleSignOut" class="w-full px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg transition">
-          Logout
-        </button>
+        <div class="p-3">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img v-if="profile?.avatar_url" :src="profile.avatar_url" class="w-full h-full object-cover" />
+              <span v-else class="text-xs font-medium text-blue-700">
+                {{ profile?.display_name?.charAt(0)?.toUpperCase() || '?' }}
+              </span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-gray-700 truncate">{{ profile?.display_name || authUser?.email }}</p>
+              <p class="text-[10px] text-gray-400">Admin</p>
+            </div>
+          </div>
+          <button @click="handleSignOut" class="w-full px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg transition">
+            Logout
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -321,6 +335,11 @@
           <GoogleServicesPage />
         </div>
 
+        <!-- Storage Management -->
+        <div v-if="activeMenu === 'storage'">
+          <StorageManagementPage />
+        </div>
+
         <!-- API Credentials -->
         <div v-if="activeMenu === 'api'">
           <ApiCredentialsPage />
@@ -340,17 +359,27 @@
 
     <!-- Delete Family Modal -->
     <div v-if="deletingFamily" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
-        <h3 class="font-semibold text-gray-900 text-lg">Hapus Keluarga</h3>
+      <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+        <h3 class="font-semibold text-red-700 text-lg">⚠️ Hapus Keluarga Permanen</h3>
         <p class="text-sm text-gray-600 mt-2">
-          Yakin hapus keluarga <strong>{{ deletingFamily.name }}</strong> beserta {{ getFamilyMembers(deletingFamily.id).length }} anggotanya? Tindakan ini tidak bisa dibatalkan.
+          Anda akan menghapus keluarga <strong>{{ deletingFamily.name }}</strong> secara permanen.
         </p>
+        <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 space-y-1">
+          <p class="font-semibold">Semua data berikut akan ikut terhapus:</p>
+          <p>• Seluruh anggota ({{ getFamilyMembers(deletingFamily.id).length }} user) • Chat • Finance • Calendar • Tasks • Memories • Vault • Safe Zone • Location • Screen Time • SOS • Parenting • Health • Pet • Konsultasi • Notifikasi • File Storage • Seluruh Authentication User</p>
+          <p class="font-bold mt-2">Tindakan ini TIDAK DAPAT dibatalkan.</p>
+        </div>
+        <div class="mt-4">
+          <label class="block text-xs text-gray-500 mb-1">Ketik <strong>DELETE FAMILY</strong> untuk konfirmasi:</label>
+          <input v-model="deleteConfirmText" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-red-300" placeholder="DELETE FAMILY" />
+        </div>
         <div v-if="deleteError" class="mt-3 p-2 bg-red-50 text-red-700 text-xs rounded">{{ deleteError }}</div>
+        <div v-if="deleteProgress" class="mt-3 text-xs text-gray-600">{{ deleteProgress }}</div>
         <div class="flex justify-end gap-3 mt-5">
-          <button @click="deletingFamily = null; deleteError = ''" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+          <button @click="deletingFamily = null; deleteError = ''; deleteConfirmText = ''" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
             Batal
           </button>
-          <button @click="executeDeleteFamily" :disabled="deleteLoading" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+          <button @click="executeDeleteFamily" :disabled="deleteLoading || deleteConfirmText !== 'DELETE FAMILY'" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
             {{ deleteLoading ? 'Menghapus...' : 'Hapus Permanen' }}
           </button>
         </div>
@@ -390,6 +419,7 @@ import ConsultantSessionsPage from './ConsultantSessionsPage.vue'
 import ConsultationPaymentsPage from './ConsultationPaymentsPage.vue'
 import ManualPaymentsPage from './ManualPaymentsPage.vue'
 import AdminOverview from './AdminOverview.vue'
+import { LayoutDashboard, Users, FileText, Video, MessagesSquare, ShieldAlert, Headphones, CreditCard, TrendingUp, Code, Globe, Info, ToggleLeft, ShoppingBag, Search, Settings, ExternalLink } from '@lucide/vue'
 import RevenuePage from './RevenuePage.vue'
 import CreateUserPage from './CreateUserPage.vue'
 import FamilySuspendPage from './FamilySuspendPage.vue'
@@ -400,6 +430,7 @@ import AdminTicketsPage from './AdminTicketsPage.vue'
 import FeatureTogglesPage from './FeatureTogglesPage.vue'
 import ProductsPage from './ProductsPage.vue'
 import GoogleServicesPage from './GoogleServicesPage.vue'
+import StorageManagementPage from './StorageManagementPage.vue'
 
 const router = useRouter()
 const PAGE_SIZE = 10
@@ -430,6 +461,8 @@ const expandedFamily = ref(null)
 const deletingFamily = ref(null)
 const deleteLoading = ref(false)
 const deleteError = ref('')
+const deleteConfirmText = ref('')
+const deleteProgress = ref('')
 const deletingUser = ref(null)
 const deleteUserLoading = ref(false)
 const deleteUserError = ref('')
@@ -452,22 +485,23 @@ const stats = ref([
 ])
 
 const menuItems = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'users', label: 'Users' },
-  { id: 'content', label: 'Konten' },
-  { id: 'webinar', label: 'Webinar' },
-  { id: 'consultation', label: 'Konsultasi' },
-  { id: 'suspensions', label: 'Suspensi' },
-  { id: 'support', label: 'Support' },
-  { id: 'payments', label: 'Pembayaran' },
-  { id: 'revenue', label: 'Revenue' },
-  { id: 'api', label: 'API & Integrasi' },
-  { id: 'landing', label: 'Landing Page' },
-  { id: 'about_cms', label: 'About Kinora' },
-  { id: 'features', label: 'Feature Toggle' },
-  { id: 'products', label: 'Produk' },
-  { id: 'google', label: 'Google Services' },
-  { id: 'settings', label: 'Pengaturan' },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'users', label: 'Users', icon: Users },
+  { id: 'content', label: 'Konten', icon: FileText },
+  { id: 'webinar', label: 'Webinar', icon: Video },
+  { id: 'consultation', label: 'Konsultasi', icon: MessagesSquare },
+  { id: 'suspensions', label: 'Suspensi', icon: ShieldAlert },
+  { id: 'support', label: 'Support', icon: Headphones },
+  { id: 'payments', label: 'Pembayaran', icon: CreditCard },
+  { id: 'revenue', label: 'Revenue', icon: TrendingUp },
+  { id: 'api', label: 'API & Integrasi', icon: Code },
+  { id: 'landing', label: 'Landing Page', icon: Globe },
+  { id: 'about_cms', label: 'About Kinora', icon: Info },
+  { id: 'features', label: 'Feature Toggle', icon: ToggleLeft },
+  { id: 'products', label: 'Produk', icon: ShoppingBag },
+  { id: 'google', label: 'Google Services', icon: Search },
+  { id: 'storage', label: 'Storage', icon: Code },
+  { id: 'settings', label: 'Pengaturan', icon: Settings },
 ]
 
 const currentMenuLabel = computed(() => menuItems.find(m => m.id === activeMenu.value)?.label || '')
@@ -558,27 +592,60 @@ function confirmDeleteFamily(fam) {
 
 async function executeDeleteFamily() {
   if (!deletingFamily.value) return
+  if (deleteConfirmText.value !== 'DELETE FAMILY') return
+
   deleteLoading.value = true
   deleteError.value = ''
+  deleteProgress.value = 'Menghapus data keluarga...'
 
-  const { error: err } = await supabase.rpc('founder_delete_family', {
-    p_family_id: deletingFamily.value.id
-  })
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { deleteError.value = 'Session expired.'; deleteLoading.value = false; return }
 
-  if (err) {
-    deleteError.value = err.message
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hard-delete-family`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          family_id: deletingFamily.value.id,
+          confirm: 'DELETE FAMILY'
+        })
+      }
+    )
+
+    const result = await res.json()
+
+    if (!res.ok || !result.success) {
+      deleteError.value = result.error || 'Penghapusan gagal.'
+      deleteLoading.value = false
+      deleteProgress.value = ''
+      return
+    }
+
+    deleteProgress.value = `Selesai. ${result.users_deleted} user dihapus.`
+
+    // Remove from local state
+    const fid = deletingFamily.value.id
+    allFamilies.value = allFamilies.value.filter(f => f.id !== fid)
+    allMembers.value = allMembers.value.filter(m => m.family_id !== fid)
+    allUsers.value = allUsers.value.map(u => u.family_id === fid ? { ...u, family_name: '-', role: null } : u)
+
+    setTimeout(() => {
+      deletingFamily.value = null
+      deleteLoading.value = false
+      deleteConfirmText.value = ''
+      deleteProgress.value = ''
+    }, 2000)
+
+  } catch (e) {
+    deleteError.value = 'Terjadi kesalahan saat menghapus.'
     deleteLoading.value = false
-    return
+    deleteProgress.value = ''
   }
-
-  // Remove from local state
-  const fid = deletingFamily.value.id
-  allFamilies.value = allFamilies.value.filter(f => f.id !== fid)
-  allMembers.value = allMembers.value.filter(m => m.family_id !== fid)
-  allUsers.value = allUsers.value.map(u => u.family_id === fid ? { ...u, family_name: '-', role: null } : u)
-
-  deletingFamily.value = null
-  deleteLoading.value = false
 }
 
 // --- Delete user ---
