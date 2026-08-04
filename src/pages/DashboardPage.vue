@@ -330,6 +330,11 @@
         <div v-if="activeMenu === 'landing'">
           <LandingSettingsPage />
         </div>
+
+        <!-- About CMS -->
+        <div v-if="activeMenu === 'about_cms'">
+          <AboutCmsPage />
+        </div>
       </main>
     </div>
 
@@ -390,6 +395,7 @@ import CreateUserPage from './CreateUserPage.vue'
 import FamilySuspendPage from './FamilySuspendPage.vue'
 import ApiCredentialsPage from './ApiCredentialsPage.vue'
 import LandingSettingsPage from './LandingSettingsPage.vue'
+import AboutCmsPage from './AboutCmsPage.vue'
 import AdminTicketsPage from './AdminTicketsPage.vue'
 import FeatureTogglesPage from './FeatureTogglesPage.vue'
 import ProductsPage from './ProductsPage.vue'
@@ -457,6 +463,7 @@ const menuItems = [
   { id: 'revenue', label: 'Revenue' },
   { id: 'api', label: 'API & Integrasi' },
   { id: 'landing', label: 'Landing Page' },
+  { id: 'about_cms', label: 'About Kinora' },
   { id: 'features', label: 'Feature Toggle' },
   { id: 'products', label: 'Produk' },
   { id: 'google', label: 'Google Services' },

@@ -34,6 +34,11 @@ const routes = [
     component: () => import('../pages/HelpPage.vue'),
   },
   {
+    path: '/about',
+    name: 'About',
+    component: () => import('../pages/AboutPage.vue'),
+  },
+  {
     path: '/help/category/:slug',
     name: 'HelpCategory',
     component: () => import('../pages/HelpCategoryPage.vue'),
