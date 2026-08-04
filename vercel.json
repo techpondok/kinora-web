@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "https://sasigbuckngggpwpxlhz.supabase.co/functions/v1/sitemap"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "https://sasigbuckngggpwpxlhz.supabase.co/functions/v1/robots-txt"
+    },
+    {
+      "source": "/ads.txt",
+      "destination": "https://sasigbuckngggpwpxlhz.supabase.co/functions/v1/ads-txt"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

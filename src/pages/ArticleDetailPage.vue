@@ -67,12 +67,37 @@
           </a>
         </div>
 
-        <!-- Share -->
-        <div class="mt-8 flex gap-3">
-          <button @click="share" class="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Bagikan</button>
+        <!-- Share Buttons -->
+        <div class="mt-8 border-t border-gray-100 pt-6">
+          <p class="text-xs text-gray-500 mb-3 font-medium">Bagikan artikel:</p>
+          <div class="flex flex-wrap gap-2">
+            <a :href="`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + currentUrl)}`" target="_blank" class="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-xs font-medium hover:bg-green-100 transition">WhatsApp</a>
+            <a :href="`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`" target="_blank" class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition">Facebook</a>
+            <a :href="`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`" target="_blank" class="px-3 py-2 bg-sky-50 text-sky-700 rounded-lg text-xs font-medium hover:bg-sky-100 transition">LinkedIn</a>
+            <a :href="`https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(article.title)}`" target="_blank" class="px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg text-xs font-medium hover:bg-cyan-100 transition">Telegram</a>
+            <button @click="copyLink" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition">{{ copied ? '✓ Disalin' : 'Salin Link' }}</button>
+          </div>
+        </div>
+
+        <!-- Related Articles -->
+        <div v-if="relatedArticles.length" class="mt-10 border-t border-gray-100 pt-8">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Artikel Terkait</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a v-for="r in relatedArticles" :key="r.id" :href="`/${isNews ? 'news' : 'articles'}/${r.slug}`" class="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition group">
+              <div class="h-32 bg-gray-100 overflow-hidden">
+                <img v-if="r.cover_url" :src="r.cover_url" :alt="r.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
+              </div>
+              <div class="p-3">
+                <p class="text-xs text-amber-600 font-medium mb-1">{{ r.category }}</p>
+                <h4 class="font-semibold text-gray-900 text-sm line-clamp-2 group-hover:text-amber-700 transition">{{ r.title }}</h4>
+              </div>
+            </a>
+          </div>
         </div>
       </article>
     </main>
+
+    <PublicFooter />
 
     <!-- JSON-LD -->
     <component :is="'script'" v-if="article" type="application/ld+json" v-html="jsonLd"></component>
@@ -84,7 +109,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useArticles } from '../composables/useArticles.js'
 import { useGoogleServices } from '../composables/useGoogleServices.js'
+import { supabase } from '../lib/supabase.js'
 import PublicHeader from '../components/PublicHeader.vue'
+import PublicFooter from '../components/PublicFooter.vue'
 import ArticleAdSlot from '../components/ArticleAdSlot.vue'
 
 const route = useRoute()
@@ -131,11 +158,21 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+const relatedArticles = ref([])
+const copied = ref(false)
+const currentUrl = computed(() => typeof window !== 'undefined' ? window.location.href : '')
+
+function copyLink() {
+  navigator.clipboard.writeText(currentUrl.value)
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 2000)
+}
+
 function share() {
   if (navigator.share) {
     navigator.share({ title: article.value.title, url: window.location.href })
   } else {
-    navigator.clipboard.writeText(window.location.href)
+    copyLink()
   }
 }
 
@@ -146,6 +183,17 @@ onMounted(async () => {
     article.value = data
     incrementReadCount(data.id)
     document.title = data.seo_title || data.title
+
+    // Fetch related articles (same category, different slug)
+    const { data: related } = await supabase
+      .from('kinora_articles')
+      .select('id, title, slug, cover_url, category, published_at')
+      .eq('status', 'published')
+      .eq('category', data.category)
+      .neq('slug', slug)
+      .order('published_at', { ascending: false })
+      .limit(3)
+    relatedArticles.value = related || []
   }
 })
 </script>
