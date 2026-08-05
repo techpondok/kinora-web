@@ -169,7 +169,10 @@ function statusClass(s) {
   return map[s] || 'bg-gray-100 text-gray-500'
 }
 
-function formatDate(d) { return d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—' }
+function formatDate(d) {
+  if (!d) return '—'
+  return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })
+}
 
 async function loadBroadcasts() {
   loading.value = true
@@ -179,8 +182,18 @@ async function loadBroadcasts() {
 }
 
 function openEditor(b) {
-  if (b) { form.value = { ...b, target_type: b.target_audience?.type || 'all' } }
-  else { form.value = { ...defaultForm } }
+  if (b) {
+    let localScheduled = ''
+    if (b.scheduled_at) {
+      const d = new Date(b.scheduled_at)
+      const offset = d.getTimezoneOffset()
+      const local = new Date(d.getTime() - offset * 60000)
+      localScheduled = local.toISOString().slice(0, 16)
+    }
+    form.value = { ...b, target_type: b.target_audience?.type || 'all', scheduled_at: localScheduled }
+  } else {
+    form.value = { ...defaultForm }
+  }
   saveError.value = ''
   showEditor.value = true
 }
@@ -189,33 +202,52 @@ async function saveBroadcast(status) {
   if (!form.value.title) { saveError.value = 'Judul wajib diisi.'; return }
   saving.value = true; saveError.value = ''
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const payload = {
-    title: form.value.title, body: form.value.body, category: form.value.category,
-    priority: form.value.priority, channels: form.value.channels,
-    target_audience: { type: form.value.target_type },
-    scheduled_at: form.value.scheduled_at || null,
-    cta_label: form.value.cta_label || null, cta_url: form.value.cta_url || null,
-    banner_url: form.value.banner_url || null,
-    status: status === 'scheduled' && !form.value.scheduled_at ? 'completed' : status,
-    sent_at: status !== 'draft' && !form.value.scheduled_at ? new Date().toISOString() : null,
-    updated_at: new Date().toISOString(),
-  }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
 
-  let error
-  if (form.value.id) {
-    const res = await supabase.from('kinora_broadcasts').update(payload).eq('id', form.value.id)
-    error = res.error
-  } else {
-    payload.created_by = user?.id
-    const res = await supabase.from('kinora_broadcasts').insert(payload)
-    error = res.error
-  }
+    // Convert datetime-local to proper ISO with timezone
+    let scheduledAt = null
+    if (form.value.scheduled_at) {
+      // datetime-local gives "2026-08-05T22:43" in local time
+      // Convert to ISO string with timezone offset
+      const localDate = new Date(form.value.scheduled_at)
+      scheduledAt = localDate.toISOString()
+    }
 
-  saving.value = false
-  if (error) { saveError.value = error.message; return }
-  showEditor.value = false
-  await loadBroadcasts()
+    const payload = {
+      title: form.value.title,
+      body: form.value.body || '',
+      category: form.value.category || 'general',
+      priority: form.value.priority || 'normal',
+      channels: form.value.channels || ['push', 'in_app'],
+      target_audience: { type: form.value.target_type || 'all' },
+      scheduled_at: scheduledAt,
+      cta_label: form.value.cta_label || null,
+      cta_url: form.value.cta_url || null,
+      banner_url: form.value.banner_url || null,
+      status: status === 'scheduled' && !scheduledAt ? 'completed' : status,
+      sent_at: status !== 'draft' && !scheduledAt ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }
+
+    let error
+    if (form.value.id) {
+      const res = await supabase.from('kinora_broadcasts').update(payload).eq('id', form.value.id)
+      error = res.error
+    } else {
+      payload.created_by = user?.id
+      const res = await supabase.from('kinora_broadcasts').insert(payload)
+      error = res.error
+    }
+
+    saving.value = false
+    if (error) { saveError.value = error.message; return }
+    showEditor.value = false
+    await loadBroadcasts()
+  } catch (e) {
+    saving.value = false
+    saveError.value = e.message || 'Gagal menyimpan.'
+  }
 }
 
 async function sendBroadcast(b) {

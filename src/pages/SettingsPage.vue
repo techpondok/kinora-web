@@ -316,7 +316,7 @@
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="p in promoCodes" :key="p.id">
                   <td class="py-2 font-mono font-medium text-gray-900">{{ p.code }}</td>
-                  <td class="py-2 text-gray-600">{{ p.code_type }}</td>
+                  <td class="py-2 text-gray-600">{{ formatPromoType(p.code_type) }}</td>
                   <td class="py-2 text-gray-600">{{ p.trial_days }}d</td>
                   <td class="py-2 text-gray-600">{{ p.redemption_count }}/{{ p.max_redemptions || '∞' }}</td>
                   <td class="py-2"><span :class="p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" class="px-2 py-0.5 text-xs rounded-full">{{ p.is_active ? 'Active' : 'Inactive' }}</span></td>
@@ -358,6 +358,7 @@
                   <label class="block text-xs text-gray-500 mb-1">Tipe</label>
                   <select v-model="editingPromo.code_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
                     <option value="trial">Trial</option>
+                    <option value="access_pass">Access Pass</option>
                     <option value="discount">Discount</option>
                     <option value="founder">Founder</option>
                     <option value="family_invite">Family Invite</option>
@@ -365,8 +366,26 @@
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-500 mb-1">Trial Days</label><input v-model.number="editingPromo.trial_days" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
+                <div><label class="block text-xs text-gray-500 mb-1">{{ editingPromo.code_type === 'access_pass' ? 'Duration (days)' : 'Trial Days' }}</label><input v-model.number="editingPromo.trial_days" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
                 <div><label class="block text-xs text-gray-500 mb-1">Max Redemptions (kosong = unlimited)</label><input v-model.number="editingPromo.max_redemptions" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
+              </div>
+              <!-- Access Pass specific fields -->
+              <div v-if="editingPromo.code_type === 'access_pass'" class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Target Plan</label>
+                  <select v-model="editingPromo.target_plan" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                    <option value="family_plus">Family Plus</option>
+                    <option value="family_pro">Family Pro</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Duration Unit</label>
+                  <select v-model="editingPromo.duration_unit" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                    <option value="day">Days</option>
+                    <option value="week">Weeks</option>
+                    <option value="month">Months</option>
+                  </select>
+                </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div><label class="block text-xs text-gray-500 mb-1">Discount %</label><input v-model.number="editingPromo.discount_percent" type="number" min="0" max="100" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
@@ -1212,6 +1231,8 @@ function newPromoTemplate() {
     grants_founder_badge: false,
     one_time_per_user: true,
     one_time_per_family: true,
+    target_plan: 'family_plus',
+    duration_unit: 'day',
   }
 }
 
@@ -1255,6 +1276,11 @@ async function savePromo() {
 async function togglePromoActive(p) {
   await supabase.from('kinora_trial_promo_codes').update({ is_active: !p.is_active }).eq('id', p.id)
   loadPromoCodes()
+}
+
+function formatPromoType(type) {
+  const map = { trial: 'Trial', discount: 'Discount', founder: 'Founder', family_invite: 'Family Invite', access_pass: 'Access Pass' }
+  return map[type] || type
 }
 
 async function doDeletePromo() {
