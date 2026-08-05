@@ -120,7 +120,14 @@ const { googleConfig } = useGoogleServices()
 
 const props = defineProps({ type: { type: String, default: 'article' } })
 const isNews = computed(() => props.type === 'news')
-const isAdsFree = ref(false) // TODO: check user subscription entitlement
+const isAdsFree = ref(false)
+
+// Check subscription ad-free entitlement from backend
+async function checkAdsFree() {
+  const { data } = await supabase.rpc('check_article_ads_allowed')
+  if (data && data.ads_allowed === false) isAdsFree.value = true
+}
+checkAdsFree()
 
 const wordCount = computed(() => {
   if (!article.value?.body) return 0

@@ -305,6 +305,11 @@
           <AdminTicketsPage />
         </div>
 
+        <!-- Broadcast -->
+        <div v-if="activeMenu === 'broadcast'">
+          <BroadcastPage />
+        </div>
+
         <!-- Pembayaran -->
         <div v-if="activeMenu === 'payments'">
           <ManualPaymentsPage />
@@ -427,6 +432,7 @@ import ApiCredentialsPage from './ApiCredentialsPage.vue'
 import LandingSettingsPage from './LandingSettingsPage.vue'
 import AboutCmsPage from './AboutCmsPage.vue'
 import AdminTicketsPage from './AdminTicketsPage.vue'
+import BroadcastPage from './BroadcastPage.vue'
 import FeatureTogglesPage from './FeatureTogglesPage.vue'
 import ProductsPage from './ProductsPage.vue'
 import GoogleServicesPage from './GoogleServicesPage.vue'
@@ -492,6 +498,7 @@ const menuItems = [
   { id: 'consultation', label: 'Konsultasi', icon: MessagesSquare },
   { id: 'suspensions', label: 'Suspensi', icon: ShieldAlert },
   { id: 'support', label: 'Support', icon: Headphones },
+  { id: 'broadcast', label: 'Broadcast', icon: Globe },
   { id: 'payments', label: 'Pembayaran', icon: CreditCard },
   { id: 'revenue', label: 'Revenue', icon: TrendingUp },
   { id: 'api', label: 'API & Integrasi', icon: Code },

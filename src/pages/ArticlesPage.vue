@@ -94,6 +94,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useArticles } from '../composables/useArticles.js'
 import { useGoogleServices } from '../composables/useGoogleServices.js'
+import { supabase } from '../lib/supabase.js'
 import PublicHeader from '../components/PublicHeader.vue'
 import PublicFooter from '../components/PublicFooter.vue'
 import ArticleAdSlot from '../components/ArticleAdSlot.vue'
@@ -105,6 +106,14 @@ const { articles, loading, fetchArticles } = useArticles()
 const { googleConfig } = useGoogleServices()
 
 const isAdsFree = ref(false)
+
+// Check subscription ad-free entitlement from backend
+async function checkAdsFree() {
+  const { data } = await supabase.rpc('check_article_ads_allowed')
+  if (data && data.ads_allowed === false) isAdsFree.value = true
+}
+checkAdsFree()
+
 const search = ref('')
 const activeCategory = ref('')
 

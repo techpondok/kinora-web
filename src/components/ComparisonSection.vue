@@ -1,93 +1,117 @@
 <template>
-  <section class="py-16 sm:py-20 px-4 sm:px-6 bg-white">
+  <section class="py-20 px-4 sm:px-6 bg-white">
     <div class="max-w-6xl mx-auto">
       <!-- Header -->
-      <div class="text-center mb-12">
-        <h2 data-animate class="text-2xl sm:text-3xl font-bold text-gray-900">Lebih dari Sekadar Aplikasi Pelacak Keluarga</h2>
-        <p data-animate class="mt-3 text-gray-600 max-w-2xl mx-auto">Kinora membantu keluarga tetap terhubung, aman, dan terorganisir melalui fitur yang dirancang untuk kebutuhan keluarga sehari-hari.</p>
+      <div class="text-center mb-14">
+        <h2 class="text-2xl sm:text-3xl font-bold text-gray-900" style="font-family: 'Bricolage Grotesque', sans-serif">
+          Why Install Multiple Apps...
+        </h2>
+        <p class="text-xl sm:text-2xl font-bold text-amber-600 mt-1">...when Kinora already includes everything?</p>
+        <p class="mt-4 text-gray-500 max-w-2xl mx-auto text-sm leading-relaxed">
+          Most families download different apps for safety, parental controls, finance, organization, memories, and communication. With Kinora, everything works together in one secure platform.
+        </p>
       </div>
 
-      <!-- Desktop Table -->
-      <div class="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-gray-200">
-              <th class="text-left px-5 py-4 font-semibold text-gray-700 w-52">Kemampuan</th>
-              <th class="px-5 py-4 font-semibold text-amber-800 bg-amber-50 text-center min-w-[140px]">Kinora</th>
-              <th class="px-5 py-4 font-medium text-gray-600 text-center min-w-[130px]">Aplikasi Pelacak</th>
-              <th class="px-5 py-4 font-medium text-gray-600 text-center min-w-[130px]">Parental Control</th>
-              <th class="px-5 py-4 font-medium text-gray-600 text-center min-w-[130px]">Pengelola Keluarga</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, idx) in comparisonData" :key="row.feature"
-              class="border-b border-gray-100 hover:bg-gray-50/50 transition"
-              :class="{ 'comparison-row-enter': true }"
-              :style="{ animationDelay: `${idx * 60}ms` }"
-            >
-              <td class="px-5 py-3.5 text-gray-800 font-medium">{{ row.feature }}</td>
-              <td class="px-5 py-3.5 text-center bg-amber-50/40">
-                <span class="inline-flex items-center gap-1.5 text-amber-800 font-medium text-xs">
-                  <svg v-if="row.kinora === 'Tersedia'" class="w-4 h-4 text-amber-600" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="currentColor" opacity="0.15"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  {{ row.kinora }}
-                </span>
-                <span v-if="row.kinora_note" class="block text-[10px] text-amber-600/70 mt-0.5">{{ row.kinora_note }}</span>
-              </td>
-              <td class="px-5 py-3.5 text-center text-gray-500 text-xs">{{ row.tracker }}</td>
-              <td class="px-5 py-3.5 text-center text-gray-500 text-xs">{{ row.parental }}</td>
-              <td class="px-5 py-3.5 text-center text-gray-500 text-xs">{{ row.manager }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Comparison Table Desktop -->
+      <div class="hidden lg:block rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-100">
+                <th class="text-left px-5 py-4 font-semibold text-gray-700 w-48 bg-white sticky left-0 z-10">Family Needs</th>
+                <th class="px-4 py-4 text-center bg-amber-50 border-x border-amber-100 min-w-[120px]">
+                  <div class="flex flex-col items-center gap-1">
+                    <span class="text-[10px] px-2 py-0.5 bg-amber-500 text-white rounded-full font-bold">BEST VALUE</span>
+                    <span class="font-bold text-amber-800">Kinora</span>
+                  </div>
+                </th>
+                <th v-for="col in columns" :key="col" class="px-3 py-4 text-center font-medium text-gray-500 min-w-[100px] text-xs">{{ col }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, idx) in rows" :key="row.feature" class="border-t border-gray-50 hover:bg-gray-50/50 transition" :style="{ animationDelay: idx * 30 + 'ms' }">
+                <td class="px-5 py-3 text-gray-800 font-medium bg-white sticky left-0 z-10">{{ row.feature }}</td>
+                <td class="px-4 py-3 text-center bg-amber-50/40 border-x border-amber-50">
+                  <span class="text-green-600 font-bold text-base">✓</span>
+                </td>
+                <td v-for="(val, i) in row.others" :key="i" class="px-3 py-3 text-center">
+                  <span v-if="val === 'yes'" class="text-green-600">✓</span>
+                  <span v-else-if="val === 'limited'" class="text-amber-500 text-xs">◐</span>
+                  <span v-else class="text-gray-300">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Mobile Cards -->
-      <div class="md:hidden space-y-3">
-        <div v-for="(row, idx) in comparisonData" :key="row.feature"
-          data-animate :data-delay="idx * 50"
-          class="bg-white rounded-xl border border-gray-200 p-4 space-y-2"
-        >
-          <h4 class="font-semibold text-gray-900 text-sm">{{ row.feature }}</h4>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="bg-amber-50 rounded-lg px-3 py-2">
-              <p class="text-[10px] text-amber-600 uppercase font-semibold mb-0.5">Kinora</p>
-              <p class="text-amber-800 font-medium">{{ row.kinora }}</p>
-              <p v-if="row.kinora_note" class="text-[10px] text-amber-600/70 mt-0.5">{{ row.kinora_note }}</p>
-            </div>
-            <div class="bg-gray-50 rounded-lg px-3 py-2">
-              <p class="text-[10px] text-gray-500 uppercase font-semibold mb-0.5">Pelacak</p>
-              <p class="text-gray-600">{{ row.tracker }}</p>
-            </div>
-            <div class="bg-gray-50 rounded-lg px-3 py-2">
-              <p class="text-[10px] text-gray-500 uppercase font-semibold mb-0.5">Parental Control</p>
-              <p class="text-gray-600">{{ row.parental }}</p>
-            </div>
-            <div class="bg-gray-50 rounded-lg px-3 py-2">
-              <p class="text-[10px] text-gray-500 uppercase font-semibold mb-0.5">Pengelola</p>
-              <p class="text-gray-600">{{ row.manager }}</p>
-            </div>
+      <div class="lg:hidden space-y-2">
+        <div v-for="row in rows" :key="row.feature" class="bg-white rounded-xl border border-gray-100 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-900">{{ row.feature }}</span>
+            <span class="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded-full text-xs">✓ Kinora</span>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <span v-for="(val, i) in row.others" :key="i" class="text-[10px] px-2 py-0.5 rounded-full"
+              :class="val === 'yes' ? 'bg-green-50 text-green-700' : val === 'limited' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'">
+              {{ columns[i] }}: {{ val === 'yes' ? '✓' : val === 'limited' ? '◐' : '—' }}
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- Highlight -->
-      <div data-animate class="mt-10 text-center bg-amber-50/60 rounded-2xl border border-amber-100 p-6 sm:p-8">
-        <p class="text-sm sm:text-base text-gray-700 leading-relaxed max-w-2xl mx-auto">
-          Kinora dirancang untuk <strong class="text-gray-900">mendampingi keluarga</strong>, bukan sekadar memantau anggota keluarga. Satu aplikasi untuk komunikasi, keamanan, parenting, aktivitas, keuangan, dan kenangan keluarga.
-        </p>
+      <!-- Legend -->
+      <div class="flex justify-center gap-6 mt-6 text-xs text-gray-400">
+        <span><span class="text-green-600">✓</span> Included</span>
+        <span><span class="text-amber-500">◐</span> Limited</span>
+        <span><span class="text-gray-300">—</span> Usually unavailable</span>
       </div>
 
-      <!-- Disclaimer -->
-      <p class="mt-6 text-[11px] text-gray-400 text-center max-w-xl mx-auto leading-relaxed">
-        Ketersediaan fitur pada aplikasi lain dapat berbeda berdasarkan produk, paket, negara, dan platform. Perbandingan ini menggambarkan kategori aplikasi secara umum.
-      </p>
+      <!-- Value Highlight Card -->
+      <div class="mt-14 bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl border border-amber-100 p-8 sm:p-12">
+        <h3 class="text-xl sm:text-2xl font-bold text-gray-900 text-center">One Subscription. One Family. Everything Included.</h3>
+        <p class="text-center text-gray-600 text-sm mt-3 mb-8">Instead of paying for multiple apps every month:</p>
+        <div class="flex flex-wrap justify-center gap-3 mb-8">
+          <span v-for="app in replacedApps" :key="app" class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 shadow-sm">{{ app }}</span>
+        </div>
+        <p class="text-center text-gray-900 font-semibold">You only need <span class="text-amber-600">one Kinora Family subscription</span>.</p>
+        <div class="mt-4 flex justify-center">
+          <span class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-full text-sm font-semibold shadow-md">🏆 One payment for your whole family</span>
+        </div>
+      </div>
+
+      <!-- Pricing Comparison -->
+      <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+          <h4 class="font-bold text-gray-900 mb-4">Typical Services</h4>
+          <ul class="space-y-2 text-sm text-gray-600">
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">✗</span> Multiple subscriptions</li>
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">✗</span> Pay separately for each app</li>
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">✗</span> Different accounts & logins</li>
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">✗</span> Features don't work together</li>
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">✗</span> Higher total monthly cost</li>
+          </ul>
+        </div>
+        <div class="bg-amber-50 rounded-2xl border-2 border-amber-300 p-6 relative">
+          <span class="absolute -top-3 left-6 px-3 py-0.5 bg-amber-500 text-white text-xs font-bold rounded-full">RECOMMENDED</span>
+          <h4 class="font-bold text-gray-900 mb-4">Kinora</h4>
+          <ul class="space-y-2 text-sm text-gray-700">
+            <li class="flex items-start gap-2"><span class="text-green-600 mt-0.5">✓</span> One subscription</li>
+            <li class="flex items-start gap-2"><span class="text-green-600 mt-0.5">✓</span> Covers your entire family</li>
+            <li class="flex items-start gap-2"><span class="text-green-600 mt-0.5">✓</span> One secure account</li>
+            <li class="flex items-start gap-2"><span class="text-green-600 mt-0.5">✓</span> Everything connected</li>
+            <li class="flex items-start gap-2"><span class="text-green-600 mt-0.5">✓</span> Better overall value</li>
+          </ul>
+        </div>
+      </div>
 
       <!-- CTA -->
-      <div data-animate class="mt-8 text-center">
-        <p class="text-gray-600 text-sm mb-4">Temukan cara yang lebih mudah untuk menjaga keluarga tetap terhubung.</p>
+      <div class="mt-14 text-center">
+        <p class="text-gray-600 text-sm mb-4">Stop paying for multiple apps. Everything your family needs is already included.</p>
         <div class="flex flex-wrap justify-center gap-3">
-          <a href="/register" class="px-6 py-3 bg-amber-500 text-white rounded-full hover:bg-amber-600 transition font-semibold shadow-md text-sm">Mulai Gratis</a>
-          <a href="#features" class="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-full hover:border-amber-300 hover:bg-amber-50 transition font-medium text-sm">Download Sekarang</a>
+          <a href="/register" class="px-6 py-3 bg-amber-500 text-white rounded-full font-semibold text-sm hover:bg-amber-600 transition shadow-md">Start Free Trial</a>
+          <a href="#pricing" class="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-full font-medium text-sm hover:border-amber-300 transition">View Pricing</a>
         </div>
       </div>
     </div>
@@ -95,34 +119,38 @@
 </template>
 
 <script setup>
-const comparisonData = [
-  { feature: 'Live Location', kinora: 'Tersedia', tracker: 'Umumnya tersedia', parental: 'Terkadang tersedia', manager: 'Jarang tersedia' },
-  { feature: 'Safe Zone', kinora: 'Tersedia', tracker: 'Umumnya tersedia', parental: 'Terkadang tersedia', manager: 'Jarang tersedia' },
-  { feature: 'SOS Keluarga', kinora: 'Tersedia', tracker: 'Terkadang tersedia', parental: 'Terkadang tersedia', manager: 'Jarang tersedia' },
-  { feature: 'Chat Keluarga', kinora: 'Tersedia', kinora_note: 'Terenkripsi E2E', tracker: 'Terbatas', parental: 'Jarang tersedia', manager: 'Terkadang tersedia' },
-  { feature: 'Kalender Keluarga', kinora: 'Tersedia', tracker: 'Jarang tersedia', parental: 'Jarang tersedia', manager: 'Umumnya tersedia' },
-  { feature: 'Tugas & Chores', kinora: 'Tersedia', tracker: 'Jarang tersedia', parental: 'Terkadang tersedia', manager: 'Umumnya tersedia' },
-  { feature: 'Parenting & Tumbuh Kembang', kinora: 'Tersedia', tracker: 'Tidak umum', parental: 'Terbatas', manager: 'Terkadang tersedia' },
-  { feature: 'Finance Keluarga', kinora: 'Tersedia', tracker: 'Tidak umum', parental: 'Tidak umum', manager: 'Terkadang tersedia' },
-  { feature: 'Memories & Journey', kinora: 'Tersedia', tracker: 'Tidak umum', parental: 'Tidak umum', manager: 'Terkadang tersedia' },
-  { feature: 'Kontrol Perangkat Anak', kinora: 'Tersedia', kinora_note: 'Transparan', tracker: 'Tidak selalu tersedia', parental: 'Umumnya tersedia', manager: 'Tidak umum' },
-  { feature: 'Konsultasi Keluarga', kinora: 'Tersedia', kinora_note: 'Jika aktif', tracker: 'Tidak umum', parental: 'Tidak umum', manager: 'Tidak umum' },
-  { feature: 'Webinar & Artikel', kinora: 'Tersedia', tracker: 'Tidak umum', parental: 'Terkadang tersedia', manager: 'Terkadang tersedia' },
-  { feature: 'Pengelolaan Terpadu', kinora: 'Tersedia', tracker: 'Terbatas', parental: 'Terbatas', manager: 'Tersedia sebagian' },
+const columns = ['Location Apps', 'Parental Control', 'Family Organizer', 'Finance Apps', 'Parenting Apps', 'Memory Apps']
+
+const rows = [
+  { feature: 'Live Location', others: ['yes', 'limited', 'no', 'no', 'no', 'no'] },
+  { feature: 'Safe Zones', others: ['yes', 'limited', 'no', 'no', 'no', 'no'] },
+  { feature: 'SOS Emergency', others: ['limited', 'no', 'no', 'no', 'no', 'no'] },
+  { feature: 'Screen Time', others: ['no', 'yes', 'no', 'no', 'no', 'no'] },
+  { feature: 'App Blocking', others: ['no', 'yes', 'no', 'no', 'no', 'no'] },
+  { feature: 'Website Filtering', others: ['no', 'yes', 'no', 'no', 'no', 'no'] },
+  { feature: 'Family Chat', others: ['no', 'no', 'limited', 'no', 'no', 'no'] },
+  { feature: 'Shared Calendar', others: ['no', 'no', 'yes', 'no', 'no', 'no'] },
+  { feature: 'Shopping List', others: ['no', 'no', 'yes', 'no', 'no', 'no'] },
+  { feature: 'Family Finance', others: ['no', 'no', 'limited', 'yes', 'no', 'no'] },
+  { feature: 'Budget Planning', others: ['no', 'no', 'no', 'yes', 'no', 'no'] },
+  { feature: 'OCR Receipt Scan', others: ['no', 'no', 'no', 'yes', 'no', 'no'] },
+  { feature: 'Parenting Timeline', others: ['no', 'no', 'no', 'no', 'yes', 'no'] },
+  { feature: 'Growth Tracking', others: ['no', 'no', 'no', 'no', 'yes', 'no'] },
+  { feature: 'Vaccine Reminder', others: ['no', 'no', 'no', 'no', 'yes', 'no'] },
+  { feature: 'Family Memories', others: ['no', 'no', 'no', 'no', 'no', 'yes'] },
+  { feature: 'Travel Journal', others: ['no', 'no', 'no', 'no', 'no', 'limited'] },
+  { feature: 'Family Consultant', others: ['no', 'no', 'no', 'no', 'no', 'no'] },
+  { feature: 'Family Vault', others: ['no', 'no', 'no', 'no', 'no', 'no'] },
+  { feature: 'Pet Management', others: ['no', 'no', 'no', 'no', 'no', 'no'] },
+]
+
+const replacedApps = [
+  '📍 Location App',
+  '🛡️ Parental Control App',
+  '💰 Finance App',
+  '📅 Family Organizer App',
+  '📸 Family Memories App',
+  '👶 Parenting App',
+  '❤️ Health App',
 ]
 </script>
-
-<style scoped>
-.comparison-row-enter {
-  opacity: 0;
-  transform: translateY(8px);
-  animation: rowFadeIn 0.4s ease forwards;
-}
-
-@keyframes rowFadeIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

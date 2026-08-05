@@ -13,6 +13,10 @@
       "destination": "/api/ads.txt"
     },
     {
+      "source": "/api/payments/tripay/callback",
+      "destination": "/api/payments/tripay/callback"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
