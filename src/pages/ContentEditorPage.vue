@@ -107,24 +107,25 @@
           <h3 class="font-semibold text-gray-900 text-sm">Open Graph & Twitter</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">OG Title</label>
-              <input v-model="form.og_title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+              <label class="block text-xs text-gray-500 mb-1">OG Title <span class="text-gray-300">(kosong = SEO Title)</span></label>
+              <input v-model="form.og_title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" :placeholder="form.seo_title || form.title || 'Otomatis dari SEO Title'" />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Twitter Title</label>
-              <input v-model="form.twitter_title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+              <label class="block text-xs text-gray-500 mb-1">Twitter Title <span class="text-gray-300">(kosong = OG Title)</span></label>
+              <input v-model="form.twitter_title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" :placeholder="form.og_title || form.seo_title || form.title || 'Otomatis dari OG Title'" />
             </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">OG Description</label>
-              <textarea v-model="form.og_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"></textarea>
+              <label class="block text-xs text-gray-500 mb-1">OG Description <span class="text-gray-300">(kosong = Meta Description)</span></label>
+              <textarea v-model="form.og_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" :placeholder="form.meta_description || form.summary || 'Otomatis dari Meta Description'"></textarea>
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Twitter Description</label>
-              <textarea v-model="form.twitter_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"></textarea>
+              <label class="block text-xs text-gray-500 mb-1">Twitter Description <span class="text-gray-300">(kosong = OG Description)</span></label>
+              <textarea v-model="form.twitter_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" :placeholder="form.og_description || form.meta_description || form.summary || 'Otomatis dari OG Description'"></textarea>
             </div>
           </div>
+          <p class="text-xs text-gray-400">💡 Kosongkan field di atas untuk menggunakan nilai otomatis dari SEO Title dan Meta Description saat dipublikasikan.</p>
         </div>
       </div>
 
