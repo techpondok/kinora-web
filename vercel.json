@@ -17,6 +17,28 @@
       "destination": "/api/payments/tripay/callback"
     },
     {
+      "source": "/articles/:slug*",
+      "destination": "/api/og/articles/:slug*",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(whatsapp|facebookexternalhit|telegrambot|twitterbot|linkedinbot|slackbot|discordbot).*"
+        }
+      ]
+    },
+    {
+      "source": "/news/:slug*",
+      "destination": "/api/og/news/:slug*",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(whatsapp|facebookexternalhit|telegrambot|twitterbot|linkedinbot|slackbot|discordbot).*"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
