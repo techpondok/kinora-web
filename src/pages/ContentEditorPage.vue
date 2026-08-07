@@ -53,27 +53,28 @@
           <h3 class="font-semibold text-gray-900 text-sm">SEO</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">SEO Title</label>
+              <label class="block text-xs text-gray-500 mb-1">SEO Title <button type="button" @click="autoGenerateSeoTitle" class="text-blue-500 hover:underline ml-1">Generate</button></label>
               <input v-model="form.seo_title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="SEO title..." />
-              <p class="text-xs mt-0.5" :class="(form.seo_title||'').length > 60 ? 'text-red-500' : 'text-gray-400'">{{ (form.seo_title||'').length }}/60</p>
+              <p class="text-xs mt-0.5" :class="(form.seo_title||'').length > 60 ? 'text-amber-500' : 'text-gray-400'">{{ (form.seo_title||'').length }} / 60 recommended{{ (form.seo_title||'').length > 60 ? ' · May be truncated in search results' : '' }}</p>
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Focus Keyword</label>
+              <label class="block text-xs text-gray-500 mb-1">Focus Keyword <button type="button" @click="autoGenerateFocusKeyword" class="text-blue-500 hover:underline ml-1">Generate from Title</button></label>
               <input v-model="form.focus_keyword" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="keyword utama" />
             </div>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Meta Description</label>
+            <label class="block text-xs text-gray-500 mb-1">Meta Description <button type="button" @click="autoGenerateMetaDesc" class="text-blue-500 hover:underline ml-1">Generate</button></label>
             <textarea v-model="form.meta_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Deskripsi untuk search engine..."></textarea>
-            <p class="text-xs mt-0.5" :class="(form.meta_description||'').length > 160 ? 'text-red-500' : 'text-gray-400'">{{ (form.meta_description||'').length }}/160</p>
+            <p class="text-xs mt-0.5" :class="(form.meta_description||'').length > 160 ? 'text-amber-500' : 'text-gray-400'">{{ (form.meta_description||'').length }} / 160 recommended{{ (form.meta_description||'').length > 160 ? ' · May be truncated in search results' : '' }}</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Canonical URL</label>
-              <input v-model="form.canonical_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+              <label class="block text-xs text-gray-500 mb-1">Canonical URL <span class="text-gray-300">(auto)</span></label>
+              <input v-model="form.canonical_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none bg-gray-50" :placeholder="'https://kinorafamilies.com/articles/' + (form.slug || 'slug')" />
+              <p class="text-xs text-gray-400 mt-0.5">Kosongkan untuk auto-generate dari slug.</p>
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Secondary Keywords (koma)</label>
+              <label class="block text-xs text-gray-500 mb-1">Secondary Keywords <button type="button" @click="autoGenerateSecondaryKw" class="text-blue-500 hover:underline ml-1">Generate</button></label>
               <input v-model="secondaryKwStr" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="keyword1, keyword2" />
             </div>
           </div>
@@ -90,6 +91,13 @@
             </div>
             <div class="w-full h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
               <div :class="seoScore >= 70 ? 'bg-green-500' : seoScore >= 40 ? 'bg-yellow-500' : 'bg-red-400'" class="h-full rounded-full transition-all" :style="{width: seoScore + '%'}"></div>
+            </div>
+            <div class="mt-2 space-y-1 text-xs text-gray-500">
+              <p v-if="form.seo_title" class="text-green-600">✓ SEO Title set</p>
+              <p v-else class="text-amber-600">⚠ SEO Title missing</p>
+              <p v-if="form.focus_keyword" class="text-green-600">✓ Focus keyword set</p>
+              <p v-if="form.meta_description" class="text-green-600">✓ Meta description set</p>
+              <p v-else class="text-amber-600">⚠ Meta description missing</p>
             </div>
           </div>
         </div>
@@ -253,6 +261,35 @@ function autoSlug() {
   if (!slugManuallyEdited.value && !isEdit.value) {
     form.value.slug = generateSlug(form.value.title)
   }
+}
+
+// SEO auto-generate helpers
+function autoGenerateSeoTitle() {
+  const title = form.value.title || ''
+  form.value.seo_title = title.length <= 60 ? title : title.slice(0, 57) + '...'
+}
+
+function autoGenerateFocusKeyword() {
+  const title = (form.value.title || '').toLowerCase()
+  // Extract 3-6 word phrase from title
+  const words = title.replace(/[?,!.]/g, '').split(/\s+/).filter(w => w.length > 2)
+  form.value.focus_keyword = words.slice(0, 5).join(' ')
+}
+
+function autoGenerateMetaDesc() {
+  const summary = form.value.summary || ''
+  const body = (form.value.body || '').replace(/<[^>]*>/g, '')
+  const source = summary || body.slice(0, 300)
+  form.value.meta_description = source.length <= 160 ? source : source.slice(0, 157) + '...'
+}
+
+function autoGenerateSecondaryKw() {
+  const title = (form.value.title || '').toLowerCase().replace(/[?,!.]/g, '')
+  const words = title.split(/\s+/).filter(w => w.length > 3)
+  const category = form.value.category || ''
+  const tags = form.value.tags || []
+  const kws = [...new Set([...words.slice(0, 3).map(w => w), category, ...tags])].filter(Boolean).slice(0, 8)
+  secondaryKwStr.value = kws.join(', ')
 }
 
 watch(() => form.value.slug, (newVal, oldVal) => {

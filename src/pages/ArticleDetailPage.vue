@@ -165,6 +165,35 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function resolveOgImage(data) {
+  // Priority: og_image → cover_url → first image in body → default
+  if (data.og_image) return toAbsolute(data.og_image)
+  if (data.cover_url) return toAbsolute(data.cover_url)
+  // Extract first image from HTML body
+  const match = (data.body || '').match(/<img[^>]+src="([^"]+)"/)
+  if (match) return toAbsolute(match[1])
+  return 'https://kinorafamilies.com/og-default.png'
+}
+
+function toAbsolute(url) {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return 'https://kinorafamilies.com' + (url.startsWith('/') ? url : '/' + url)
+}
+
+function setMeta(name, content) {
+  if (!content) return
+  const isOg = name.startsWith('og:') || name.startsWith('twitter:')
+  const attr = isOg ? 'property' : 'name'
+  let el = document.querySelector(`meta[${attr}="${name}"]`)
+  if (!el) {
+    el = document.createElement('meta')
+    el.setAttribute(attr, name)
+    document.head.appendChild(el)
+  }
+  el.setAttribute('content', content)
+}
+
 const relatedArticles = ref([])
 const copied = ref(false)
 const currentUrl = computed(() => typeof window !== 'undefined' ? window.location.href : '')
@@ -190,6 +219,18 @@ onMounted(async () => {
     article.value = data
     incrementReadCount(data.id)
     document.title = data.seo_title || data.title
+
+    // Set OG metadata dynamically
+    setMeta('og:title', data.og_title || data.seo_title || data.title)
+    setMeta('og:description', data.og_description || data.meta_description || data.summary || '')
+    setMeta('og:image', resolveOgImage(data))
+    setMeta('og:url', window.location.href)
+    setMeta('og:type', 'article')
+    setMeta('twitter:card', 'summary_large_image')
+    setMeta('twitter:title', data.twitter_title || data.og_title || data.seo_title || data.title)
+    setMeta('twitter:description', data.twitter_description || data.og_description || data.meta_description || data.summary || '')
+    setMeta('twitter:image', data.twitter_image || resolveOgImage(data))
+    if (data.meta_description) setMeta('description', data.meta_description)
 
     // Fetch related articles (same category, different slug)
     const { data: related } = await supabase

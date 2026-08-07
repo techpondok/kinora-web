@@ -48,7 +48,10 @@ export function useArticles() {
       query = query.or(`title.ilike.%${search}%,slug.ilike.%${search}%,author_name.ilike.%${search}%,focus_keyword.ilike.%${search}%`)
     }
     if (contentType) query = query.eq('content_type', contentType)
-    if (status) query = query.eq('status', status)
+    if (status) {
+      query = query.eq('status', status)
+      if (status === 'published') query = query.lte('published_at', new Date().toISOString())
+    }
     if (featured === 'true') query = query.eq('is_featured', true)
     if (featured === 'false') query = query.eq('is_featured', false)
 
@@ -106,6 +109,29 @@ export function useArticles() {
     payload.is_published = payload.status === 'published'
     if (payload.status === 'published' && !payload.published_at) {
       payload.published_at = new Date().toISOString()
+    }
+    if (payload.status === 'scheduled') {
+      payload.is_published = false
+      payload.published_at = null
+    }
+    if (payload.status === 'draft') {
+      payload.is_published = false
+    }
+
+    // Resolve OG image from cover if not set
+    if (!payload.og_image && payload.cover_url) {
+      payload.og_image = payload.cover_url
+    }
+    // Auto-fill OG fields
+    if (!payload.og_title && payload.seo_title) payload.og_title = payload.seo_title
+    if (!payload.og_description && payload.meta_description) payload.og_description = payload.meta_description
+    // Auto-fill Twitter from OG
+    if (!payload.twitter_title && payload.og_title) payload.twitter_title = payload.og_title
+    if (!payload.twitter_description && payload.og_description) payload.twitter_description = payload.og_description
+    if (!payload.twitter_image && payload.og_image) payload.twitter_image = payload.og_image
+    // Auto canonical
+    if (!payload.canonical_url && payload.slug) {
+      payload.canonical_url = 'https://kinorafamilies.com/articles/' + payload.slug
     }
 
     let result
