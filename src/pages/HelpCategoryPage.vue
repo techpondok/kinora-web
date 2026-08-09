@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
 
     <section class="py-12 px-4 sm:px-6">
       <div class="max-w-4xl mx-auto">
@@ -65,7 +64,6 @@
       </div>
     </section>
 
-    <PublicFooter />
   </div>
 </template>
 
@@ -73,8 +71,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
-import PublicFooter from '../components/PublicFooter.vue'
+
 
 const route = useRoute()
 const slug = route.params.slug

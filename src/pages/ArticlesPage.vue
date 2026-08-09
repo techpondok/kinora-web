@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
 
     <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <!-- Header -->
@@ -17,12 +16,14 @@
       </div>
 
       <!-- Category Filter -->
-      <div class="flex flex-wrap gap-2 mb-8 overflow-x-auto">
-        <button @click="activeCategory = ''" :class="['px-4 py-1.5 rounded-full text-sm font-medium transition', !activeCategory ? 'bg-amber-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300']">Semua</button>
-        <button v-for="cat in categories" :key="cat" @click="activeCategory = cat"
-          :class="['px-4 py-1.5 rounded-full text-sm font-medium transition whitespace-nowrap', activeCategory === cat ? 'bg-amber-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300']">
-          {{ cat }}
-        </button>
+      <div class="mb-8">
+        <CategoryDropdown
+          v-model="activeCategory"
+          :categories="categoryList"
+          :show-counts="true"
+          :total-count="articles.length"
+          :all-label="'Semua Kategori'"
+        />
       </div>
 
       <!-- Loading -->
@@ -86,23 +87,27 @@
       </template>
     </main>
 
-    <PublicFooter />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useArticles } from '../composables/useArticles.js'
+import { useContentCategories } from '../composables/useContentCategories.js'
 import { useGoogleServices } from '../composables/useGoogleServices.js'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
-import PublicFooter from '../components/PublicFooter.vue'
+
+import CategoryDropdown from '../components/CategoryDropdown.vue'
 import ArticleAdSlot from '../components/ArticleAdSlot.vue'
 
 const props = defineProps({ type: { type: String, default: 'article' } })
 const isNews = computed(() => props.type === 'news')
 
+const route = useRoute()
+const router = useRouter()
 const { articles, loading, fetchArticles } = useArticles()
+const { categories: rawCategories, loadCategories } = useContentCategories()
 const { googleConfig } = useGoogleServices()
 
 const isAdsFree = ref(false)
@@ -117,22 +122,43 @@ checkAdsFree()
 const search = ref('')
 const activeCategory = ref('')
 
-const categories = computed(() => {
-  const cats = new Set(articles.value.map(a => a.category).filter(Boolean))
-  return [...cats].sort()
+// Build category list with counts
+const categoryList = computed(() => {
+  return rawCategories.value.map(cat => ({
+    ...cat,
+    count: articles.value.filter(a => a.category === cat.slug || a.category === cat.name).length
+  }))
+})
+
+// Sync activeCategory with URL query parameter
+watch(activeCategory, (val) => {
+  const query = { ...route.query }
+  if (val) {
+    query.category = val
+  } else {
+    delete query.category
+  }
+  router.replace({ query })
 })
 
 const featuredArticle = computed(() => articles.value.find(a => a.is_featured))
 
 const filteredArticles = computed(() => {
   let list = articles.value.filter(a => !a.is_featured || search.value || activeCategory.value)
-  if (activeCategory.value) list = list.filter(a => a.category === activeCategory.value)
+  if (activeCategory.value) {
+    list = list.filter(a => a.category === activeCategory.value || a.category === getCategoryName(activeCategory.value))
+  }
   if (search.value) {
     const q = search.value.toLowerCase()
     list = list.filter(a => a.title.toLowerCase().includes(q) || (a.summary || '').toLowerCase().includes(q) || (a.category || '').toLowerCase().includes(q))
   }
   return list
 })
+
+function getCategoryName(slug) {
+  const cat = rawCategories.value.find(c => c.slug === slug)
+  return cat?.name || slug
+}
 
 function getAdSlot(placement) {
   const placements = googleConfig.value?.adsense?.placements || {}
@@ -149,7 +175,17 @@ function readTime(body) {
   return Math.max(1, Math.ceil(body.replace(/<[^>]*>/g, '').split(/\s+/).length / 200))
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Load categories from backend
+  await loadCategories(isNews.value ? 'news' : 'article')
+
+  // Restore category from URL query
+  const urlCategory = route.query.category
+  if (urlCategory) {
+    const isValid = rawCategories.value.some(c => c.slug === urlCategory)
+    activeCategory.value = isValid ? urlCategory : ''
+  }
+
   fetchArticles({ pageSize: 50, contentType: isNews.value ? 'news' : '', status: 'published', sortBy: 'published_at', sortAsc: false })
 })
 </script>

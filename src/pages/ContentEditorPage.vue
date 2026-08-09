@@ -142,7 +142,12 @@
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">Kategori</label>
-            <input v-model="form.category" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="general" />
+            <select v-model="form.category" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+              <option value="">— Pilih Kategori —</option>
+              <option v-for="cat in contentCategories" :key="cat.slug" :value="cat.slug">{{ cat.name }}</option>
+            </select>
+            <p v-if="categoriesLoading" class="text-xs text-gray-400 mt-0.5">Memuat kategori...</p>
+            <p v-if="categoriesError" class="text-xs text-red-500 mt-0.5">Gagal memuat kategori</p>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">Status</label>
@@ -205,12 +210,14 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useArticles } from '../composables/useArticles.js'
+import { useContentCategories } from '../composables/useContentCategories.js'
 import RichTextEditor from '../components/RichTextEditor.vue'
 
 const props = defineProps({ articleId: { type: String, default: null } })
 const emit = defineEmits(['navigate'])
 
 const { fetchArticle, saveArticle, uploadImage, deleteImage, generateSlug, calculateSeoScore, loading: loadingData } = useArticles()
+const { categories: contentCategories, loading: categoriesLoading, error: categoriesError, loadCategories } = useContentCategories()
 
 const saving = ref(false)
 const error = ref('')
@@ -364,6 +371,7 @@ function saveDraft() { doSave('draft') }
 function savePublish() { doSave('published') }
 
 onMounted(async () => {
+  await loadCategories()
   if (props.articleId) {
     const { data } = await fetchArticle(props.articleId)
     if (data) {

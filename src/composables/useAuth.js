@@ -1,24 +1,34 @@
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { supabase } from '../lib/supabase.js'
 
 const user = ref(null)
 const session = ref(null)
 const loading = ref(true)
 
-export function useAuth() {
-  onMounted(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      session.value = s
-      user.value = s?.user ?? null
-      loading.value = false
-    })
+// Initialize auth state once at module level (singleton)
+let initialized = false
 
-    supabase.auth.onAuthStateChange((_event, s) => {
-      session.value = s
-      user.value = s?.user ?? null
-    })
+function initAuth() {
+  if (initialized) return
+  initialized = true
+
+  supabase.auth.getSession().then(({ data: { session: s } }) => {
+    session.value = s
+    user.value = s?.user ?? null
+    loading.value = false
   })
 
+  supabase.auth.onAuthStateChange((_event, s) => {
+    session.value = s
+    user.value = s?.user ?? null
+    loading.value = false
+  })
+}
+
+// Run immediately on first import
+initAuth()
+
+export function useAuth() {
   async function signUp(email, password) {
     const { data, error } = await supabase.auth.signUp({ email, password })
     return { data, error }

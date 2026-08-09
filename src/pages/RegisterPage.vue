@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
     <div class="flex items-center justify-center px-4 py-12">
       <div class="w-full max-w-md">
         <!-- Step: Choose -->
@@ -165,7 +164,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
 
 const router = useRouter()
 const route = useRoute()

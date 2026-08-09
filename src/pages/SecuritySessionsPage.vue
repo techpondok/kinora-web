@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
 
     <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
     <div>
@@ -104,7 +103,6 @@ import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../composables/useAuth.js'
 import { useReauth } from '../composables/useReauth.js'
-import PublicHeader from '../components/PublicHeader.vue'
 
 const router = useRouter()
 const { user } = useAuth()

@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-10">
       <h1 class="text-xl font-bold text-gray-900 mb-6">Tiket Saya</h1>
 
@@ -35,7 +34,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
 
 const user = ref(null)
 const tickets = ref([])

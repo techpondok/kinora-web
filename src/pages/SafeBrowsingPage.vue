@@ -1,18 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50 flex flex-col">
-    <!-- Simple Header -->
-    <header class="bg-white border-b border-gray-100 px-4 py-3">
-      <div class="max-w-3xl mx-auto flex items-center justify-between">
-        <a href="/" class="flex items-center gap-2">
-          <span class="font-bold text-gray-900" style="font-family: 'Bricolage Grotesque', sans-serif">Kinora</span>
-        </a>
-        <div class="flex gap-4 text-xs text-gray-500">
-          <a href="/help" class="hover:text-gray-700">Bantuan</a>
-          <a href="/privacy" class="hover:text-gray-700">Privasi</a>
-        </div>
-      </div>
-    </header>
-
     <!-- Main Content -->
     <main class="flex-1 flex items-center justify-center px-4 py-12">
       <div class="w-full max-w-md text-center space-y-6">
@@ -53,11 +40,6 @@
         </div>
       </div>
     </main>
-
-    <!-- Simple Footer -->
-    <footer class="text-center py-4 text-xs text-gray-400">
-      © Kinora. Menjaga keluarga tetap aman.
-    </footer>
   </div>
 </template>
 

@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-50">
     <PublicHeader />
 
-    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8" :class="{ 'xl:max-w-5xl': hasToc }">
       <div v-if="loading" class="text-center py-12 text-gray-500">Memuat artikel...</div>
 
       <div v-else-if="!article" class="text-center py-12">
@@ -11,7 +11,9 @@
         <a href="/articles" class="text-blue-600 text-sm mt-4 inline-block">← Kembali ke daftar</a>
       </div>
 
-      <article v-else>
+      <div v-else class="xl:flex xl:gap-6">
+        <!-- Main article content -->
+        <article class="flex-1 min-w-0">
         <!-- Breadcrumb -->
         <nav class="text-xs text-gray-400 mb-4">
           <a href="/" class="hover:text-gray-600">Kinora</a> /
@@ -21,12 +23,14 @@
 
         <!-- Header -->
         <h1 class="text-3xl font-bold text-gray-900 leading-tight">{{ article.title }}</h1>
-        <div class="flex items-center gap-3 mt-3 text-sm text-gray-500">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 text-sm text-gray-500">
           <span>{{ article.author_name || 'Kinora' }}</span>
           <span>·</span>
           <span>{{ formatDate(article.published_at) }}</span>
           <span>·</span>
           <span>{{ readTime }} menit baca</span>
+          <span class="hidden sm:inline">·</span>
+          <ArticleShare :title="article.title" :url="currentUrl" />
         </div>
 
         <!-- Cover -->
@@ -43,8 +47,17 @@
           :min-height="100"
         />
 
+        <!-- Mobile/Tablet TOC (collapsible card, hidden on xl) -->
+        <div v-if="hasToc" class="xl:hidden mt-6">
+          <ArticleToc
+            :headings="tocHeadings"
+            :active-id="activeHeadingId"
+            @update:active-id="activeHeadingId = $event"
+          />
+        </div>
+
         <!-- Body -->
-        <div class="mt-8 prose prose-gray max-w-none text-gray-700 leading-relaxed" v-html="article.body"></div>
+        <div class="mt-8 prose prose-gray max-w-none text-gray-700 leading-relaxed" v-html="processedBody"></div>
 
         <!-- Ad after article body -->
         <ArticleAdSlot
@@ -67,17 +80,19 @@
           </a>
         </div>
 
-        <!-- Share Buttons -->
-        <div class="mt-8 border-t border-gray-100 pt-6">
-          <p class="text-xs text-gray-500 mb-3 font-medium">Bagikan artikel:</p>
-          <div class="flex flex-wrap gap-2">
-            <a :href="`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + currentUrl)}`" target="_blank" class="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-xs font-medium hover:bg-green-100 transition">WhatsApp</a>
-            <a :href="`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`" target="_blank" class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition">Facebook</a>
-            <a :href="`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`" target="_blank" class="px-3 py-2 bg-sky-50 text-sky-700 rounded-lg text-xs font-medium hover:bg-sky-100 transition">LinkedIn</a>
-            <a :href="`https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(article.title)}`" target="_blank" class="px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg text-xs font-medium hover:bg-cyan-100 transition">Telegram</a>
-            <button @click="copyLink" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition">{{ copied ? '✓ Disalin' : 'Salin Link' }}</button>
-          </div>
+        <!-- Share (bottom of article) -->
+        <div class="mt-8 border-t border-gray-100 pt-6 flex items-center gap-3">
+          <span class="text-xs text-gray-500 font-medium">Bagikan artikel ini</span>
+          <ArticleShare :title="article.title" :url="currentUrl" />
         </div>
+
+        <!-- Comments -->
+        <ArticleComments
+          v-if="article"
+          :content-id="article.id"
+          :content-type="isNews ? 'news' : 'article'"
+          :comments-enabled="article.allow_comments !== false"
+        />
 
         <!-- Related Articles -->
         <div v-if="relatedArticles.length" class="mt-10 border-t border-gray-100 pt-8">
@@ -94,10 +109,18 @@
             </a>
           </div>
         </div>
-      </article>
-    </main>
+        </article>
 
-    <PublicFooter />
+        <!-- Desktop TOC Sidebar (xl only, handled internally by component) -->
+        <div v-if="hasToc" class="hidden xl:block">
+          <ArticleToc
+            :headings="tocHeadings"
+            :active-id="activeHeadingId"
+            @update:active-id="activeHeadingId = $event"
+          />
+        </div>
+      </div>
+    </main>
 
     <!-- JSON-LD -->
     <component :is="'script'" v-if="article" type="application/ld+json" v-html="jsonLd"></component>
@@ -105,14 +128,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useArticles } from '../composables/useArticles.js'
 import { useGoogleServices } from '../composables/useGoogleServices.js'
+import { useArticleToc } from '../composables/useArticleToc.js'
+import { setCanonical, SITE_URL } from '../composables/useCanonical.js'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
-import PublicFooter from '../components/PublicFooter.vue'
+
 import ArticleAdSlot from '../components/ArticleAdSlot.vue'
+import ArticleToc from '../components/ArticleToc.vue'
+import ArticleComments from '../components/ArticleComments.vue'
+import ArticleShare from '../components/ArticleShare.vue'
 
 const route = useRoute()
 const { article, loading, fetchBySlug, incrementReadCount } = useArticles()
@@ -121,6 +148,9 @@ const { googleConfig } = useGoogleServices()
 const props = defineProps({ type: { type: String, default: 'article' } })
 const isNews = computed(() => props.type === 'news')
 const isAdsFree = ref(false)
+
+// TOC
+const { headings: tocHeadings, processedBody, activeId: activeHeadingId, hasToc, generate: generateToc } = useArticleToc()
 
 // Check subscription ad-free entitlement from backend
 async function checkAdsFree() {
@@ -195,36 +225,31 @@ function setMeta(name, content) {
 }
 
 const relatedArticles = ref([])
-const copied = ref(false)
-const currentUrl = computed(() => typeof window !== 'undefined' ? window.location.href : '')
-
-function copyLink() {
-  navigator.clipboard.writeText(currentUrl.value)
-  copied.value = true
-  setTimeout(() => { copied.value = false }, 2000)
-}
-
-function share() {
-  if (navigator.share) {
-    navigator.share({ title: article.value.title, url: window.location.href })
-  } else {
-    copyLink()
-  }
-}
+const currentUrl = computed(() => {
+  if (!article.value) return ''
+  const prefix = isNews.value ? 'news' : 'articles'
+  return `${SITE_URL}/${prefix}/${route.params.slug}`
+})
 
 onMounted(async () => {
   const slug = route.params.slug
   const { data } = await fetchBySlug(slug)
   if (data) {
     article.value = data
+    generateToc(data.body)
     incrementReadCount(data.id)
     document.title = data.seo_title || data.title
 
     // Set OG metadata dynamically
+    const prefix = isNews.value ? 'news' : 'articles'
+    const canonicalPath = `/${prefix}/${slug}`
+    const canonicalUrl = SITE_URL + canonicalPath
+    setCanonical(canonicalPath)
+
     setMeta('og:title', data.og_title || data.seo_title || data.title)
     setMeta('og:description', data.og_description || data.meta_description || data.summary || '')
     setMeta('og:image', resolveOgImage(data))
-    setMeta('og:url', window.location.href)
+    setMeta('og:url', canonicalUrl)
     setMeta('og:type', 'article')
     setMeta('twitter:card', 'summary_large_image')
     setMeta('twitter:title', data.twitter_title || data.og_title || data.seo_title || data.title)

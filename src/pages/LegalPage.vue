@@ -1,7 +1,5 @@
 <template>
   <div class="min-h-screen bg-white">
-    <PublicHeader />
-
     <main class="max-w-3xl mx-auto px-5 py-10 pt-16">
       <div v-if="loading" class="text-center py-12 text-gray-400 text-sm">Memuat...</div>
       <div v-else-if="!pageData" class="text-center py-12 text-gray-400 text-sm">Halaman tidak ditemukan.</div>
@@ -10,16 +8,13 @@
         <div class="mt-8 prose prose-sm max-w-none text-gray-700 leading-relaxed" v-html="renderedBody"></div>
       </template>
     </main>
-
-    <PublicFooter />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
-import PublicFooter from '../components/PublicFooter.vue'
+
 
 const props = defineProps({ slug: { type: String, required: true } })
 

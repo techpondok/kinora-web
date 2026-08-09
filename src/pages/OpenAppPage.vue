@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
     <div class="flex items-center justify-center px-4 py-16">
       <div class="w-full max-w-sm text-center space-y-6">
         <div class="w-16 h-16 bg-amber-100 rounded-2xl mx-auto flex items-center justify-center">
@@ -29,7 +28,6 @@
 
 <script setup>
 import { onMounted } from 'vue'
-import PublicHeader from '../components/PublicHeader.vue'
 
 onMounted(() => {
   // Try deep link first, fallback handled by the page buttons

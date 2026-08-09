@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
     <div class="flex items-center justify-center px-4 py-12">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
       <h1 class="text-xl font-bold text-gray-900 mb-2">Reset Password</h1>
@@ -32,7 +31,6 @@
 <script setup>
 import { ref } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
 
 const email = ref('')
 const loading = ref(false)

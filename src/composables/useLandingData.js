@@ -28,7 +28,17 @@ export function useLandingData() {
       landingConfig.value = cfg
 
       // Plans
-      plans.value = (plansRes.data || []).map(p => ({ key: p.key, label: p.label, ...p.value })).sort((a, b) => (a.price_monthly_idr || 0) - (b.price_monthly_idr || 0))
+      plans.value = (plansRes.data || []).map(p => {
+        const plan = { key: p.key, label: p.label, ...p.value }
+        // Calculate yearly savings percent dynamically
+        if (plan.price_monthly_idr > 0 && plan.price_yearly_idr > 0) {
+          const yearlyRegularCost = plan.price_monthly_idr * 12
+          if (yearlyRegularCost > plan.price_yearly_idr) {
+            plan.yearly_savings_percent = Math.round(((yearlyRegularCost - plan.price_yearly_idr) / yearlyRegularCost) * 100)
+          }
+        }
+        return plan
+      }).sort((a, b) => (a.price_monthly_idr || 0) - (b.price_monthly_idr || 0))
 
       consultants.value = consultRes.data || []
       webinars.value = webinarRes.data || []

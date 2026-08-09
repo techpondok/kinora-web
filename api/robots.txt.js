@@ -2,13 +2,22 @@ module.exports = function handler(req, res) {
   const content = `User-agent: *
 Allow: /
 Disallow: /dashboard/
+Disallow: /dashboard
 Disallow: /admin/
 Disallow: /consultant/
+Disallow: /consultant
 Disallow: /portal/
+Disallow: /portal
+Disallow: /security
 Disallow: /login
 Disallow: /register
 Disallow: /forgot-password
+Disallow: /open-app
 Disallow: /help/my-tickets
+Disallow: /*?utm_*
+Disallow: /*?ref=*
+Disallow: /*?source=*
+Disallow: /*?share=*
 
 Sitemap: https://kinorafamilies.com/sitemap.xml
 `

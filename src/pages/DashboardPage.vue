@@ -282,6 +282,16 @@
           <ContentEditorPage v-else :article-id="contentEditId === '__new__' ? null : contentEditId" @navigate="handleContentNav" />
         </div>
 
+        <!-- Content Categories -->
+        <div v-if="activeMenu === 'content_categories'">
+          <ContentCategoriesPage />
+        </div>
+
+        <!-- Comments Moderation -->
+        <div v-if="activeMenu === 'comments'">
+          <CommentModerationPage />
+        </div>
+
         <!-- Webinar -->
         <div v-if="activeMenu === 'webinar'">
           <WebinarPage />
@@ -355,6 +365,11 @@
           <LandingSettingsPage />
         </div>
 
+        <!-- Social & Community Links -->
+        <div v-if="activeMenu === 'social_links'">
+          <SocialLinksPage />
+        </div>
+
         <!-- About CMS -->
         <div v-if="activeMenu === 'about_cms'">
           <AboutCmsPage />
@@ -424,7 +439,10 @@ import ConsultantSessionsPage from './ConsultantSessionsPage.vue'
 import ConsultationPaymentsPage from './ConsultationPaymentsPage.vue'
 import ManualPaymentsPage from './ManualPaymentsPage.vue'
 import AdminOverview from './AdminOverview.vue'
-import { LayoutDashboard, Users, FileText, Video, MessagesSquare, ShieldAlert, Headphones, CreditCard, TrendingUp, Code, Globe, Info, ToggleLeft, ShoppingBag, Search, Settings, ExternalLink } from '@lucide/vue'
+import { LayoutDashboard, Users, FileText, Video, MessagesSquare, ShieldAlert, Headphones, CreditCard, TrendingUp, Code, Globe, Info, ToggleLeft, ShoppingBag, Search, Settings, ExternalLink, Share2, Tag, MessageCircle } from '@lucide/vue'
+import SocialLinksPage from './SocialLinksPage.vue'
+import ContentCategoriesPage from './ContentCategoriesPage.vue'
+import CommentModerationPage from './CommentModerationPage.vue'
 import RevenuePage from './RevenuePage.vue'
 import CreateUserPage from './CreateUserPage.vue'
 import FamilySuspendPage from './FamilySuspendPage.vue'
@@ -494,6 +512,8 @@ const menuItems = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'content', label: 'Konten', icon: FileText },
+  { id: 'content_categories', label: 'Kategori Konten', icon: Tag },
+  { id: 'comments', label: 'Komentar', icon: MessageCircle },
   { id: 'webinar', label: 'Webinar', icon: Video },
   { id: 'consultation', label: 'Konsultasi', icon: MessagesSquare },
   { id: 'suspensions', label: 'Suspensi', icon: ShieldAlert },
@@ -503,6 +523,7 @@ const menuItems = [
   { id: 'revenue', label: 'Revenue', icon: TrendingUp },
   { id: 'api', label: 'API & Integrasi', icon: Code },
   { id: 'landing', label: 'Landing Page', icon: Globe },
+  { id: 'social_links', label: 'Social & Komunitas', icon: Share2 },
   { id: 'about_cms', label: 'About Kinora', icon: Info },
   { id: 'features', label: 'Feature Toggle', icon: ToggleLeft },
   { id: 'products', label: 'Produk', icon: ShoppingBag },

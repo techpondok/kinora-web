@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
     <div class="max-w-2xl mx-auto px-4 sm:px-6 py-10">
       <h1 class="text-xl font-bold text-gray-900 mb-2">Laporkan Bug</h1>
       <p class="text-sm text-gray-500 mb-6">Bantu kami memperbaiki masalah yang Anda temukan.</p>
@@ -51,7 +50,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
 
 const user = ref(null)
 const form = ref({ title: '', category: '', impact: 'medium', steps_to_reproduce: '', expected_result: '', actual_result: '', description: '' })

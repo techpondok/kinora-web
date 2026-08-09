@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
 
     <!-- Hero -->
     <section class="bg-white border-b border-gray-100 py-12 px-4 sm:px-6">
@@ -99,15 +98,13 @@
       <a href="/help/my-tickets" class="text-amber-600 text-sm font-medium hover:underline">Lihat tiket saya →</a>
     </section>
 
-    <PublicFooter />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
-import PublicFooter from '../components/PublicFooter.vue'
+
 
 const search = ref('')
 const openFaq = ref(-1)

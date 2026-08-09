@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
 
     <!-- Tab Navigation -->
     <div class="bg-white border-b border-gray-100">
@@ -12,6 +11,7 @@
           <button @click="tab = 'payments'" :class="tab === 'payments' ? 'text-blue-700 font-medium' : ''">Payments</button>
           <button @click="tab = 'webinars'" :class="tab === 'webinars' ? 'text-blue-700 font-medium' : ''">Webinars</button>
           <button @click="tab = 'consultations'" :class="tab === 'consultations' ? 'text-blue-700 font-medium' : ''">Konsultasi</button>
+          <button @click="tab = 'content'" :class="tab === 'content' ? 'text-blue-700 font-medium' : ''">Konten</button>
           <router-link to="/security" class="hover:text-blue-600">Keamanan</router-link>
         </div>
       </div>
@@ -174,6 +174,9 @@
         </div>
       </div>
 
+      <!-- CONTENT PREFERENCES -->
+      <ContentPreferences v-if="tab === 'content'" />
+
       </template>
     </main>
   </div>
@@ -183,7 +186,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
+import ContentPreferences from '../components/ContentPreferences.vue'
 
 const router = useRouter()
 const loading = ref(true)

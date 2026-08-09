@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
     <main class="max-w-2xl mx-auto px-4 py-10">
       <div class="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
         <h1 class="text-xl font-bold text-gray-900 mb-1">Usulkan Fitur</h1>
@@ -52,7 +51,6 @@
 <script setup>
 import { ref } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
 
 const form = ref({ title: '', description: '', priority: 'medium', email: '' })
 const saving = ref(false)

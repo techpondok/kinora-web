@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-white">
-    <PublicHeader />
 
     <div v-if="loading" class="py-24 text-center text-gray-500 text-sm">Memuat...</div>
 
@@ -132,16 +131,13 @@
       </div>
     </section>
     </template>
-
-    <PublicFooter />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
-import PublicFooter from '../components/PublicFooter.vue'
+
 
 const loading = ref(true)
 const about = ref(null)

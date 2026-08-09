@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-white flex flex-col">
-    <PublicHeader />
 
     <!-- Loading -->
     <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -82,8 +81,6 @@
         </div>
       </section>
     </template>
-
-    <PublicFooter />
   </div>
 </template>
 
@@ -91,8 +88,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
-import PublicHeader from '../components/PublicHeader.vue'
-import PublicFooter from '../components/PublicFooter.vue'
+
 
 const route = useRoute()
 const loading = ref(true)

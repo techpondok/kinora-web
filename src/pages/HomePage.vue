@@ -6,28 +6,6 @@
     </div>
 
     <template v-else>
-      <!-- HEADER -->
-      <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 transition-shadow duration-300" :class="headerScrolled ? 'header-scrolled' : ''">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <a href="/" class="flex items-center gap-2">
-            <img v-if="cfg('general').logo_url" :src="cfg('general').logo_url" alt="Kinora" class="h-7" />
-            <span class="font-bold text-xl text-gray-900" style="font-family: 'Bricolage Grotesque', sans-serif">{{ cfg('general').app_name || 'Kinora' }}</span>
-          </a>
-          <nav class="hidden lg:flex items-center gap-6 text-sm text-gray-600">
-            <a href="#features" class="hover:text-amber-700 transition">Fitur</a>
-            <a href="#how-it-works" class="hover:text-amber-700 transition">Cara Kerja</a>
-            <a href="#pricing" class="hover:text-amber-700 transition">Harga</a>
-            <a v-if="consultants.length" href="#consultants" class="hover:text-amber-700 transition">Konsultan</a>
-            <a v-if="articles.length" href="#articles" class="hover:text-amber-700 transition">Artikel</a>
-            <a href="#faq" class="hover:text-amber-700 transition">FAQ</a>
-          </nav>
-          <div class="flex items-center gap-2">
-            <a href="/login" class="hidden sm:inline-block px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition">Login</a>
-            <a :href="cfg('general').web_app || '/register'" class="px-4 py-2 text-sm bg-amber-500 text-white rounded-full hover:bg-amber-600 transition font-medium shadow-sm">Mulai Gratis</a>
-          </div>
-        </div>
-      </header>
-
       <!-- HERO -->
       <section class="relative overflow-hidden py-20 sm:py-28 px-4 sm:px-6">
         <!-- Background decorative -->
@@ -507,46 +485,8 @@
         </div>
       </section>
 
-      <!-- FOOTER -->
-      <footer class="py-12 px-4 sm:px-6 bg-gray-900 text-gray-400">
-        <div class="max-w-6xl mx-auto">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div>
-              <h3 class="font-bold text-white text-lg mb-3" style="font-family: 'Bricolage Grotesque', sans-serif">{{ cfg('general').app_name || 'Kinora' }}</h3>
-              <p class="text-sm leading-relaxed">{{ cfg('footer').description }}</p>
-            </div>
-            <div>
-              <h4 class="font-medium text-white text-sm mb-3">Produk</h4>
-              <div class="space-y-2 text-sm"><a href="#features" class="block hover:text-white transition">Fitur</a><a href="#pricing" class="block hover:text-white transition">Harga</a><a href="/articles" class="block hover:text-white transition">Artikel</a></div>
-            </div>
-            <div>
-              <h4 class="font-medium text-white text-sm mb-3">Bantuan</h4>
-              <div class="space-y-2 text-sm">
-                <a v-if="cfg('footer').help_url" :href="cfg('footer').help_url" class="block hover:text-white transition">Pusat Bantuan</a>
-                <a v-if="cfg('footer').privacy_url" :href="cfg('footer').privacy_url" class="block hover:text-white transition">Kebijakan Privasi</a>
-                <a v-if="cfg('footer').terms_url" :href="cfg('footer').terms_url" class="block hover:text-white transition">Syarat & Ketentuan</a>
-              </div>
-            </div>
-            <div>
-              <h4 class="font-medium text-white text-sm mb-3">Hubungi</h4>
-              <div class="space-y-2 text-sm">
-                <p v-if="cfg('general').email_support">{{ cfg('general').email_support }}</p>
-                <p v-if="cfg('general').whatsapp">WhatsApp: {{ cfg('general').whatsapp }}</p>
-                <div class="flex gap-3 mt-3">
-                  <a v-for="(url, platform) in (cfg('footer').social || {})" :key="platform" v-show="url" :href="url" target="_blank" rel="noopener" class="hover:text-white transition capitalize text-xs">{{ platform }}</a>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="mt-10 pt-6 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p class="text-xs">© {{ cfg('footer').copyright || '2026 Kinora. All rights reserved.' }}</p>
-            <div class="flex gap-3">
-              <a v-if="cfg('general').play_store" :href="cfg('general').play_store" target="_blank" class="px-3 py-1.5 bg-gray-800 text-white rounded text-xs hover:bg-gray-700">Google Play</a>
-              <a v-if="cfg('general').app_store" :href="cfg('general').app_store" target="_blank" class="px-3 py-1.5 bg-gray-800 text-white rounded text-xs hover:bg-gray-700">App Store</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <!-- COMMUNITY -->
+      <CommunitySection />
     </template>
   </div>
 </template>
@@ -555,12 +495,26 @@
 import { computed, ref, onMounted } from 'vue'
 import { useLandingData } from '../composables/useLandingData.js'
 import { useScrollAnimation } from '../composables/useScrollAnimation.js'
+import CommunitySection from '../components/CommunitySection.vue'
 import ComparisonSection from '../components/ComparisonSection.vue'
 import { Shield, MapPin, Bell, MessageCircle, Wallet, Heart, Camera, Smartphone, Calendar, ClipboardList, ShoppingCart, UtensilsCrossed, Clock, Baby, Pill, Syringe, Activity, Users, Lock, Eye, AlertTriangle, Settings, Star, BookOpen, CheckCircle } from '@lucide/vue'
 
 const { plans, consultants, webinars, articles, loaded, loadAll, cfg, formatIDR } = useLandingData()
 useScrollAnimation(loaded)
 const openFaq = ref(-1)
+
+// Dynamic nav items for HomePage (anchor links to sections)
+const homeNavItems = computed(() => {
+  const items = [
+    { label: 'Fitur', href: '#features' },
+    { label: 'Cara Kerja', href: '#how-it-works' },
+    { label: 'Harga', href: '#pricing' },
+  ]
+  if (consultants.value.length) items.push({ label: 'Konsultan', href: '#consultants' })
+  if (articles.value.length) items.push({ label: 'Artikel', href: '#articles' })
+  items.push({ label: 'FAQ', href: '#faq' })
+  return items
+})
 
 const activeFeatures = computed(() => (cfg('features')?.items || []).filter(f => f.active))
 const activeFaqs = computed(() => (cfg('faq')?.items || []).filter(f => f.active))
@@ -590,9 +544,4 @@ onMounted(() => {
   const seo = cfg('seo')
   if (seo?.title) document.title = seo.title
 })
-
-const headerScrolled = ref(false)
-if (typeof window !== 'undefined') {
-  window.addEventListener('scroll', () => { headerScrolled.value = window.scrollY > 10 })
-}
 </script>
