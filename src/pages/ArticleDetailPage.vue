@@ -86,9 +86,9 @@
           <ArticleShare :title="article.title" :url="currentUrl" />
         </div>
 
-        <!-- Comments -->
+        <!-- Comments (hidden in Mobile WebView — Mobile renders native discussion) -->
         <ArticleComments
-          v-if="article"
+          v-if="article && !isInApp"
           :content-id="article.id"
           :content-type="isNews ? 'news' : 'article'"
           :comments-enabled="article.allow_comments !== false"
@@ -142,6 +142,7 @@ import ArticleComments from '../components/ArticleComments.vue'
 import ArticleShare from '../components/ArticleShare.vue'
 
 const route = useRoute()
+const isInApp = computed(() => route.query.in_app === '1')
 const { article, loading, fetchBySlug, incrementReadCount } = useArticles()
 const { googleConfig } = useGoogleServices()
 
