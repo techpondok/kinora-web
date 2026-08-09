@@ -23,12 +23,18 @@ const excludedPrefixes = ['/dashboard', '/consultant', '/login', '/register', '/
 // Routes that should not be indexed
 const noIndexPrefixes = ['/dashboard', '/consultant', '/portal', '/security', '/login', '/register', '/forgot-password', '/open-app', '/help/my-tickets']
 
+// Detect in-app embedded mode (Mobile WebView)
+const isInApp = computed(() => route.query.in_app === '1')
+
 const showPublicLayout = computed(() => {
+  // Hide navbar/footer when inside Mobile WebView
+  if (isInApp.value) return false
   const path = route.path
   return !excludedPrefixes.some(prefix => path === prefix || path.startsWith(prefix + '/'))
 })
 
 // Set canonical and indexing on every route change
+// Always use clean path (without query params) for canonical
 watch(() => route.path, (newPath) => {
   const isNoIndex = noIndexPrefixes.some(prefix => newPath === prefix || newPath.startsWith(prefix + '/'))
   if (isNoIndex) {
