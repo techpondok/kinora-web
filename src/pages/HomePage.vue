@@ -384,9 +384,16 @@
             <p class="mt-3 text-gray-600">Webinar praktis seputar parenting, keamanan digital, dan keluarga.</p>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <div v-for="w in webinars" :key="w.id" class="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition">
-              <div class="h-36 bg-gray-100"><img v-if="w.cover_url" :src="w.cover_url" :alt="w.title" class="w-full h-full object-cover" loading="lazy" /></div>
+            <div v-for="w in webinars" :key="w.id" class="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition group">
+              <div class="aspect-video bg-gray-100 overflow-hidden">
+                <img v-if="w.cover_url" :src="w.cover_url" :alt="w.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                <div v-else class="w-full h-full flex items-center justify-center text-4xl text-gray-200">🎓</div>
+              </div>
               <div class="p-4 space-y-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] px-2 py-0.5 rounded-full font-medium" :class="webinarIsUpcoming(w) ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'">{{ webinarIsUpcoming(w) ? 'Upcoming' : 'Selesai' }}</span>
+                  <span class="text-xs text-gray-400">{{ w.meeting_platform }}</span>
+                </div>
                 <h3 class="font-semibold text-gray-900 text-sm line-clamp-2">{{ w.title }}</h3>
                 <p class="text-xs text-gray-500">{{ w.speaker_name }} · {{ formatDate(w.scheduled_at) }}</p>
                 <p class="text-sm font-bold" :class="w.is_free ? 'text-green-600' : 'text-amber-600'">{{ w.is_free ? 'Gratis' : formatIDR(w.price_amount) }}</p>
@@ -537,6 +544,11 @@ function featureIcon(icon) {
 function formatDate(d) {
   if (!d) return ''
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function webinarIsUpcoming(w) {
+  if (!w.scheduled_at) return false
+  return new Date(w.scheduled_at) > new Date()
 }
 
 onMounted(() => {

@@ -13,25 +13,30 @@
     </div>
 
     <div v-else class="space-y-4">
-      <div v-for="w in webinars" :key="w.id" class="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
-        <div class="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-          <img v-if="w.cover_url" :src="w.cover_url" class="w-full h-full object-cover" />
-          <div v-else class="w-full h-full flex items-center justify-center text-2xl">🎓</div>
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="font-medium text-gray-900 text-sm truncate">{{ w.title }}</p>
-          <p class="text-xs text-gray-500">{{ w.speaker_name || '-' }} · {{ formatDate(w.scheduled_at) }}</p>
-          <div class="flex gap-2 mt-1">
-            <span :class="w.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" class="px-2 py-0.5 text-xs rounded-full">{{ w.is_published ? 'Published' : 'Draft' }}</span>
-            <span class="text-xs text-gray-400">{{ w.is_free ? 'Gratis' : 'Rp ' + Number(w.price_amount).toLocaleString('id-ID') }}</span>
-            <span class="text-xs text-gray-400">{{ w.meeting_platform }}</span>
+      <div v-for="w in webinars" :key="w.id" class="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-sm transition">
+        <div class="flex">
+          <div class="w-40 h-24 bg-gray-100 flex-shrink-0">
+            <img v-if="w.cover_url" :src="w.cover_url" :alt="w.title" class="w-full h-full object-cover" />
+            <div v-else class="w-full h-full flex items-center justify-center text-2xl text-gray-300">🎓</div>
           </div>
-        </div>
-        <div class="flex gap-2">
-          <button @click="viewRegistrations(w)" class="text-xs text-purple-600 hover:underline">Peserta</button>
-          <button @click="editingWebinar = {...w}; showEditor = true" class="text-xs text-blue-600 hover:underline">Edit</button>
-          <button @click="togglePublish(w)" class="text-xs" :class="w.is_published ? 'text-orange-600' : 'text-green-600'">{{ w.is_published ? 'Unpublish' : 'Publish' }}</button>
-          <button @click="confirmDelete(w)" class="text-xs text-red-600 hover:underline">Hapus</button>
+          <div class="flex-1 min-w-0 p-4 flex items-center gap-4">
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-gray-900 text-sm truncate">{{ w.title }}</p>
+              <p class="text-xs text-gray-500">{{ w.speaker_name || '-' }} · {{ formatDate(w.scheduled_at) }}</p>
+              <div class="flex gap-2 mt-1">
+                <span :class="w.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" class="px-2 py-0.5 text-xs rounded-full">{{ w.is_published ? 'Published' : 'Draft' }}</span>
+                <span v-if="!w.cover_url" class="px-2 py-0.5 text-xs rounded-full bg-amber-50 text-amber-600">No Poster</span>
+                <span class="text-xs text-gray-400">{{ w.is_free ? 'Gratis' : 'Rp ' + Number(w.price_amount).toLocaleString('id-ID') }}</span>
+                <span class="text-xs text-gray-400">{{ w.meeting_platform }}</span>
+              </div>
+            </div>
+            <div class="flex gap-2 flex-shrink-0">
+              <button @click="viewRegistrations(w)" class="text-xs text-purple-600 hover:underline">Peserta</button>
+              <button @click="editingWebinar = {...w}; showEditor = true" class="text-xs text-blue-600 hover:underline">Edit</button>
+              <button @click="togglePublish(w)" class="text-xs" :class="w.is_published ? 'text-orange-600' : 'text-green-600'">{{ w.is_published ? 'Unpublish' : 'Publish' }}</button>
+              <button @click="confirmDelete(w)" class="text-xs text-red-600 hover:underline">Hapus</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -86,13 +91,18 @@
           </div>
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Cover / Thumbnail</label>
-          <div v-if="editingWebinar.cover_url" class="mb-2 relative w-full h-32 rounded-lg overflow-hidden bg-gray-100">
+          <label class="block text-xs text-gray-500 mb-1">Poster / Pamflet Webinar</label>
+          <p class="text-[10px] text-gray-400 mb-1">Rasio 16:9 disarankan. Maks 5MB. Format: JPEG, PNG, WebP.</p>
+          <div v-if="editingWebinar.cover_url" class="mb-2 relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100">
             <img :src="editingWebinar.cover_url" class="w-full h-full object-cover" />
-            <button @click="editingWebinar.cover_url = ''" class="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded">✕</button>
+            <button @click="editingWebinar.cover_url = ''" class="absolute top-2 right-2 bg-red-500/90 text-white text-xs px-2 py-1 rounded-md hover:bg-red-600 transition">Hapus Poster</button>
+          </div>
+          <div v-else class="mb-2 w-full aspect-video rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center">
+            <span class="text-2xl text-gray-300">🖼️</span>
+            <span class="text-xs text-gray-400 mt-1">Belum ada poster</span>
           </div>
           <input type="file" accept="image/jpeg,image/png,image/webp" @change="handleCoverUpload" class="text-xs" />
-          <p v-if="coverUploading" class="text-xs text-blue-600 mt-1">Mengupload...</p>
+          <p v-if="coverUploading" class="text-xs text-blue-600 mt-1">Mengupload poster...</p>
           <p v-if="coverUploadError" class="text-xs text-red-600 mt-1">{{ coverUploadError }}</p>
         </div>
         <div>
