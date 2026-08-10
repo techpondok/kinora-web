@@ -117,10 +117,17 @@
             <div>
               <label class="block text-xs text-gray-500 mb-1">Mode Pendaftaran</label>
               <select v-model="editingWebinar.registration_mode" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
-                <option value="open">Langsung (Open)</option>
-                <option value="approval">Memerlukan Persetujuan</option>
+                <option value="open">Auto Approve (langsung terdaftar)</option>
+                <option value="approval">Manual Approval (Admin approve)</option>
                 <option value="invitation">Undangan Saja</option>
               </select>
+              <p class="text-[10px] text-gray-400 mt-1">
+                <template v-if="editingWebinar.is_free && editingWebinar.registration_mode === 'open'">Gratis + Auto: User langsung terdaftar saat mendaftar.</template>
+                <template v-else-if="editingWebinar.is_free && editingWebinar.registration_mode === 'approval'">Gratis + Manual: User mendaftar → Admin approve → terdaftar.</template>
+                <template v-else-if="!editingWebinar.is_free && editingWebinar.registration_mode === 'open'">Berbayar + Auto: Bayar → otomatis terdaftar.</template>
+                <template v-else-if="!editingWebinar.is_free && editingWebinar.registration_mode === 'approval'">Berbayar + Manual: Bayar → Admin approve → terdaftar.</template>
+                <template v-else>Hanya user yang diundang bisa mendaftar.</template>
+              </p>
             </div>
             <div>
               <label class="block text-xs text-gray-500 mb-1">Maks Peserta</label>
@@ -166,12 +173,19 @@
         </div>
         <div class="p-6 space-y-4">
           <!-- Stats -->
-          <div class="grid grid-cols-4 gap-3">
-            <div class="text-center p-2 bg-gray-50 rounded-lg"><p class="text-lg font-bold text-gray-900">{{ registrations.length }}</p><p class="text-[10px] text-gray-500">Total</p></div>
-            <div class="text-center p-2 bg-green-50 rounded-lg"><p class="text-lg font-bold text-green-700">{{ registrations.filter(r => ['approved','registered','paid','attended'].includes(r.status)).length }}</p><p class="text-[10px] text-gray-500">Approved</p></div>
-            <div class="text-center p-2 bg-amber-50 rounded-lg"><p class="text-lg font-bold text-amber-700">{{ registrations.filter(r => r.status === 'pending').length }}</p><p class="text-[10px] text-gray-500">Pending</p></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="text-center p-2 bg-green-50 rounded-lg"><p class="text-lg font-bold text-green-700">{{ confirmedCount }}</p><p class="text-[10px] text-gray-500">Terdaftar</p></div>
+            <div class="text-center p-2 bg-amber-50 rounded-lg"><p class="text-lg font-bold text-amber-700">{{ pendingApprovalCount }}</p><p class="text-[10px] text-gray-500">Menunggu Persetujuan</p></div>
+            <div class="text-center p-2 bg-purple-50 rounded-lg"><p class="text-lg font-bold text-purple-700">{{ pendingPaymentCount }}</p><p class="text-[10px] text-gray-500">Menunggu Pembayaran</p></div>
             <div class="text-center p-2 bg-blue-50 rounded-lg"><p class="text-lg font-bold text-blue-700">{{ registrations.filter(r => r.status === 'waitlisted').length }}</p><p class="text-[10px] text-gray-500">Waitlist</p></div>
           </div>
+
+          <!-- Info -->
+          <div class="text-xs text-gray-500 flex gap-3">
+            <span>Mode: <strong>{{ selectedWebinar?.is_free ? 'Gratis' : 'Berbayar' }}</strong></span>
+            <span>Approval: <strong>{{ selectedWebinar?.registration_mode === 'approval' ? 'Manual' : 'Auto' }}</strong></span>
+          </div>
+
           <!-- List -->
           <div v-if="registrations.length === 0" class="text-center py-8 text-gray-400 text-sm">Belum ada peserta.</div>
           <div v-else class="space-y-2">
@@ -181,9 +195,12 @@
                 <p class="text-xs text-gray-500">{{ formatDate(r.registered_at) }}</p>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="regStatusClass(r.status)">{{ r.status }}</span>
-                <button v-if="r.status === 'pending'" @click="approveReg(r)" class="text-xs text-green-600 hover:underline">Approve</button>
-                <button v-if="r.status === 'pending'" @click="rejectReg(r)" class="text-xs text-red-600 hover:underline">Reject</button>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="regStatusClass(getDisplayStatus(r))">{{ getDisplayLabel(r) }}</span>
+                <!-- Show Approve/Reject only when manual approval is needed -->
+                <template v-if="canApprove(r)">
+                  <button @click="approveReg(r)" class="text-xs text-green-600 hover:underline">Approve</button>
+                  <button @click="rejectReg(r)" class="text-xs text-red-600 hover:underline">Reject</button>
+                </template>
                 <button v-if="r.status === 'waitlisted'" @click="promoteReg(r)" class="text-xs text-blue-600 hover:underline">Promote</button>
               </div>
             </div>
@@ -207,7 +224,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
 
 const webinars = ref([])
@@ -324,8 +341,110 @@ async function viewRegistrations(w) {
 }
 
 function regStatusClass(s) {
-  const map = { pending: 'bg-amber-100 text-amber-700', approved: 'bg-green-100 text-green-700', registered: 'bg-green-100 text-green-700', paid: 'bg-green-100 text-green-700', waitlisted: 'bg-blue-100 text-blue-700', rejected: 'bg-red-100 text-red-600', cancelled: 'bg-gray-100 text-gray-500', attended: 'bg-emerald-100 text-emerald-700' }
+  const map = {
+    pending_payment: 'bg-purple-100 text-purple-700',
+    pending_approval: 'bg-amber-100 text-amber-700',
+    pending: 'bg-amber-100 text-amber-700',
+    approved: 'bg-green-100 text-green-700',
+    registered: 'bg-green-100 text-green-700',
+    paid: 'bg-green-100 text-green-700',
+    paid_pending_approval: 'bg-blue-100 text-blue-700',
+    waitlisted: 'bg-blue-100 text-blue-700',
+    rejected: 'bg-red-100 text-red-600',
+    cancelled: 'bg-gray-100 text-gray-500',
+    attended: 'bg-emerald-100 text-emerald-700',
+    expired: 'bg-gray-100 text-gray-500',
+    failed: 'bg-red-50 text-red-500',
+  }
   return map[s] || 'bg-gray-100 text-gray-500'
+}
+
+// Computed counters
+const confirmedCount = computed(() => registrations.value.filter(r => ['approved', 'registered', 'paid', 'attended'].includes(r.status)).length)
+const pendingApprovalCount = computed(() => registrations.value.filter(r => needsApproval(r)).length)
+const pendingPaymentCount = computed(() => registrations.value.filter(r => isPendingPayment(r)).length)
+
+/**
+ * Determine display status for a registration based on webinar config.
+ */
+function getDisplayStatus(r) {
+  const webinar = selectedWebinar.value
+  if (!webinar) return r.status
+
+  // Confirmed states
+  if (['approved', 'registered', 'attended'].includes(r.status)) return 'approved'
+  if (r.status === 'paid' && webinar.registration_mode !== 'approval') return 'approved'
+
+  // Paid + manual approval
+  if (r.status === 'paid' && webinar.registration_mode === 'approval') return 'paid_pending_approval'
+
+  // Pending with payment_id but webinar is paid → payment pending
+  if (r.status === 'pending' && !webinar.is_free && r.payment_id) return 'pending_payment'
+
+  // Pending without payment for paid webinar → payment pending
+  if (r.status === 'pending' && !webinar.is_free && !r.payment_id) return 'pending_payment'
+
+  // Pending for free webinar with manual approval → pending approval
+  if (r.status === 'pending' && webinar.is_free && webinar.registration_mode === 'approval') return 'pending_approval'
+
+  // Pending for free + auto → should have been auto-approved
+  if (r.status === 'pending' && webinar.is_free && webinar.registration_mode === 'open') return 'pending_approval'
+
+  return r.status
+}
+
+/**
+ * Human-readable label for the registration.
+ */
+function getDisplayLabel(r) {
+  const ds = getDisplayStatus(r)
+  const labels = {
+    approved: 'Terdaftar',
+    registered: 'Terdaftar',
+    attended: 'Hadir',
+    paid_pending_approval: 'Sudah Bayar — Menunggu Persetujuan',
+    pending_approval: 'Menunggu Persetujuan',
+    pending_payment: 'Menunggu Pembayaran',
+    pending: 'Pending',
+    waitlisted: 'Waitlist',
+    rejected: 'Ditolak',
+    cancelled: 'Dibatalkan',
+    expired: 'Kedaluwarsa',
+    failed: 'Gagal',
+  }
+  return labels[ds] || r.status
+}
+
+/**
+ * Whether this registration should show Approve/Reject buttons.
+ */
+function canApprove(r) {
+  const webinar = selectedWebinar.value
+  if (!webinar) return false
+
+  // Free + Manual Approval → pending registrations need approval
+  if (webinar.is_free && webinar.registration_mode === 'approval' && r.status === 'pending') return true
+
+  // Paid + Manual Approval → paid registrations need approval
+  if (!webinar.is_free && webinar.registration_mode === 'approval' && r.status === 'paid') return true
+
+  return false
+}
+
+/**
+ * Check if registration is pending payment (for counter).
+ */
+function isPendingPayment(r) {
+  const webinar = selectedWebinar.value
+  if (!webinar || webinar.is_free) return false
+  return r.status === 'pending'
+}
+
+/**
+ * Check if registration needs manual approval (for counter).
+ */
+function needsApproval(r) {
+  return canApprove(r)
 }
 
 async function approveReg(r) {

@@ -395,8 +395,30 @@ async function executeFulfillment(supabase, payment, log) {
   const type = payment.product_type
   try {
     if (type === 'webinar') {
+      // Check webinar registration_mode to determine post-payment status
+      const { data: reg } = await supabase
+        .from('kinora_webinar_registrations')
+        .select('id, webinar_id')
+        .eq('payment_id', payment.id)
+        .eq('status', 'pending')
+        .maybeSingle()
+
+      let newRegStatus = 'approved' // Default: auto approve after payment
+      if (reg) {
+        const { data: webinar } = await supabase
+          .from('kinora_webinars')
+          .select('registration_mode')
+          .eq('id', reg.webinar_id)
+          .maybeSingle()
+
+        // Paid + Manual Approval → set to 'paid' (awaiting admin approval)
+        if (webinar?.registration_mode === 'approval') {
+          newRegStatus = 'paid'
+        }
+      }
+
       const { error } = await supabase.from('kinora_webinar_registrations')
-        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+        .update({ status: newRegStatus, reviewed_at: new Date().toISOString() })
         .eq('payment_id', payment.id)
         .eq('status', 'pending')
       if (error) throw error

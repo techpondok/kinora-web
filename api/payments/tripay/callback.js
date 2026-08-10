@@ -196,8 +196,28 @@ async function executeFulfilment(supabase, payment) {
       }
 
     } else if (type === 'webinar') {
+      // Check webinar registration_mode for post-payment status
+      const { data: reg } = await supabase
+        .from('kinora_webinar_registrations')
+        .select('id, webinar_id')
+        .eq('payment_id', payment.id)
+        .eq('status', 'pending')
+        .maybeSingle()
+
+      let newRegStatus = 'approved'
+      if (reg) {
+        const { data: webinar } = await supabase
+          .from('kinora_webinars')
+          .select('registration_mode')
+          .eq('id', reg.webinar_id)
+          .maybeSingle()
+        if (webinar?.registration_mode === 'approval') {
+          newRegStatus = 'paid' // Paid — awaiting manual approval
+        }
+      }
+
       await supabase.from('kinora_webinar_registrations')
-        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+        .update({ status: newRegStatus, reviewed_at: new Date().toISOString() })
         .eq('payment_id', payment.id)
         .eq('status', 'pending')
 
