@@ -2,10 +2,8 @@
  * Kinora Sumopod Webhook Handler
  * Route: POST /api/payments/sumopod/callback
  *
- * Handles payment callbacks for: Webinar, Marketplace, Consultation ONLY.
- * Does NOT handle: Family Plus, Storage Add-ons.
- *
- * Supports: Sandbox + Production environments with strict isolation.
+ * Handles: Webinar, Marketplace, Consultation ONLY.
+ * Auth: X-Webhook-Token (primary), Svix signature (production hardening).
  */
 const { createClient } = require('@supabase/supabase-js')
 const crypto = require('crypto')
@@ -13,168 +11,249 @@ const crypto = require('crypto')
 const ALLOWED_PRODUCT_TYPES = ['webinar', 'marketplace', 'consultation']
 
 module.exports = async function handler(req, res) {
+  // Only POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ success: false })
+    return res.status(405).json({ success: false, error: 'method_not_allowed' })
   }
 
-  // ─── 1. SUPABASE CONNECTION ───
-  const supabaseUrl = process.env.SUPABASE_URL || 'https://sasigbuckngggpwpxlhz.supabase.co'
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceKey) {
-    return res.status(500).json({ success: false })
-  }
-  const supabase = createClient(supabaseUrl, serviceKey)
+  const log = createLogger()
 
-  // ─── 2. ENVIRONMENT DETECTION ───
-  const callbackEnv = detectEnvironment(req)
+  try {
+    log.info('webhook_received', { method: req.method, url: req.url })
 
-  // ─── 3. LOAD CREDENTIALS (env vars → DB fallback) ───
-  let config = getConfigFromEnv(callbackEnv)
-  if (!config.secret) {
-    config = await getConfigFromDb(callbackEnv, supabase)
-  }
-  if (!config || !config.secret) {
-    await logAudit(supabase, null, 'config_missing', callbackEnv, { error: `${callbackEnv} secret not configured` })
-    return res.status(500).json({ success: false })
-  }
+    // ─── 1. SUPABASE CONNECTION ───
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://sasigbuckngggpwpxlhz.supabase.co'
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceKey) {
+      log.error('missing_service_key')
+      return res.status(500).json({ success: false, error: 'server_config' })
+    }
+    const supabase = createClient(supabaseUrl, serviceKey)
 
-  // ─── 4. SIGNATURE VERIFICATION ───
-  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
-  const signature = req.headers['x-sumopod-signature'] || req.headers['x-callback-signature'] || ''
+    // ─── 2. ENVIRONMENT DETECTION ───
+    const callbackEnv = detectEnvironment(req)
+    log.info('environment_detected', { env: callbackEnv })
 
-  // TODO: Replace with actual Sumopod signature algorithm from their docs
-  const expectedSignature = crypto.createHmac('sha256', config.secret).update(rawBody).digest('hex')
+    // ─── 3. LOAD WEBHOOK TOKEN ───
+    const config = await loadConfig(callbackEnv, supabase)
+    log.info('config_loaded', { hasToken: !!config.webhookToken, hasSecret: !!config.webhookSecret })
 
-  if (!signature || !timingSafeEqual(signature, expectedSignature)) {
-    await logAudit(supabase, null, 'invalid_signature', callbackEnv, {})
-    return res.status(403).json({ success: false })
-  }
+    // ─── 4. TOKEN VERIFICATION (primary — must work first) ───
+    const incomingToken = (req.headers['x-webhook-token'] || '').trim()
+    log.info('token_check', { token_present: !!incomingToken })
 
-  // ─── 5. PARSE PAYLOAD ───
-  // TODO: Adapt field names to actual Sumopod webhook payload structure
-  const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-  const {
-    transaction_id: providerTxId,
-    merchant_ref: merchantRef,
-    status: providerStatus,
-    amount: callbackAmount,
-    currency: callbackCurrency,
-    paid_at: paidAt,
-    payment_method: paymentMethod,
-    event_id: eventId,
-  } = payload
+    if (!config.webhookToken) {
+      log.error('webhook_token_not_configured', { env: callbackEnv })
+      return res.status(500).json({ success: false, error: 'webhook_token_not_configured' })
+    }
 
-  if (!merchantRef || !providerStatus) {
-    return res.status(400).json({ success: false })
-  }
+    if (!incomingToken) {
+      log.warn('missing_webhook_token')
+      return res.status(401).json({ success: false, error: 'invalid_webhook_token' })
+    }
 
-  // ─── 6. FIND EXISTING KINORA TRANSACTION ───
-  const { data: payment } = await supabase
-    .from('kinora_marketplace_payments')
-    .select('*')
-    .eq('xendit_external_id', merchantRef)
-    .maybeSingle()
+    if (!timingSafeCompare(incomingToken, config.webhookToken.trim())) {
+      log.warn('invalid_webhook_token')
+      return res.status(401).json({ success: false, error: 'invalid_webhook_token' })
+    }
 
-  if (!payment) {
-    await logAudit(supabase, null, 'transaction_not_found', callbackEnv, { merchantRef, providerTxId })
-    return res.status(404).json({ success: false })
-  }
+    log.info('token_valid')
 
-  // ─── 7. ENVIRONMENT ISOLATION ───
-  const paymentEnv = payment.metadata?.payment_environment || 'production'
-  if (paymentEnv !== callbackEnv) {
-    await logAudit(supabase, payment.id, 'environment_mismatch', callbackEnv, { paymentEnv, callbackEnv })
-    return res.status(400).json({ success: false })
-  }
+    // ─── 5. OPTIONAL: SVIX SIGNATURE VERIFICATION (production hardening) ───
+    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
+    if (config.webhookSecret) {
+      const svixResult = verifySvixSignature(req, rawBody, config.webhookSecret)
+      log.info('svix_verification', { result: svixResult.status })
+      // In production with both configured, require Svix to pass too
+      if (svixResult.status === 'failed') {
+        await safeAudit(supabase, null, 'svix_failed', callbackEnv, {})
+        return res.status(401).json({ success: false, error: 'invalid_signature' })
+      }
+      // 'skipped' = no svix headers present (e.g. test webhook) — OK, token already passed
+    }
 
-  // ─── 8. PRODUCT TYPE GUARD ───
-  if (!ALLOWED_PRODUCT_TYPES.includes(payment.product_type)) {
-    await logAudit(supabase, payment.id, 'product_type_rejected', callbackEnv, { product_type: payment.product_type })
-    return res.status(400).json({ success: false })
-  }
+    // ─── 6. PARSE PAYLOAD ───
+    let payload
+    try {
+      payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    } catch (e) {
+      log.error('json_parse_error', { error: e.message })
+      return res.status(400).json({ success: false, error: 'malformed_json' })
+    }
 
-  // ─── 9. AMOUNT + CURRENCY VERIFICATION ───
-  if (callbackAmount != null && Math.abs(Number(payment.total_amount) - Number(callbackAmount)) > 1) {
-    await logAudit(supabase, payment.id, 'amount_mismatch', callbackEnv, {
-      expected: payment.total_amount, received: callbackAmount
+    const eventType = payload.event_type || payload.type || payload.event || ''
+    const svixId = req.headers['svix-id'] || ''
+    log.info('event_parsed', { event_type: eventType, svix_id: svixId || null })
+
+    // ─── 7. HANDLE TEST EVENT ───
+    if (eventType === 'payment.test') {
+      log.info('test_event_acknowledged')
+      await safeAudit(supabase, null, 'test_webhook', callbackEnv, { event_type: eventType })
+      return res.status(200).json({ success: true })
+    }
+
+    // ─── 8. EXTRACT PAYMENT DATA ───
+    const data = payload.data || payload
+    const providerTxId = data.payment_id || null
+    const merchantRef = data.order_id || data.merchant_ref || null
+    const providerStatus = data.status || null
+    const callbackAmount = data.amount != null ? Number(data.amount) : null
+    const callbackCurrency = data.currency || null
+    const paidAt = data.paid_at || null
+    const paymentMethod = data.payment_method || null
+    const paymentChannel = data.payment_channel_used || null
+    const providerFee = data.fee != null ? Number(data.fee) : null
+    const providerNetAmount = data.net_amount != null ? Number(data.net_amount) : null
+
+    log.info('payment_data', { order_id: merchantRef, payment_id: providerTxId, status: providerStatus })
+
+    if (!merchantRef && !providerTxId) {
+      log.warn('missing_identifiers')
+      return res.status(400).json({ success: false, error: 'missing_order_id' })
+    }
+
+    if (!providerStatus) {
+      log.warn('missing_status')
+      return res.status(400).json({ success: false, error: 'missing_status' })
+    }
+
+    // ─── 9. FIND EXISTING KINORA TRANSACTION ───
+    let payment = null
+    if (merchantRef) {
+      const { data: p, error: e } = await supabase
+        .from('kinora_marketplace_payments')
+        .select('*')
+        .eq('xendit_external_id', merchantRef)
+        .maybeSingle()
+      if (e) log.error('db_lookup_error', { error: e.message })
+      payment = p
+    }
+    if (!payment && providerTxId) {
+      const { data: p, error: e } = await supabase
+        .from('kinora_marketplace_payments')
+        .select('*')
+        .eq('sumopod_payment_id', providerTxId)
+        .maybeSingle()
+      if (e) log.error('db_lookup_error_2', { error: e.message })
+      payment = p
+    }
+
+    if (!payment) {
+      log.warn('transaction_not_found', { order_id: merchantRef, payment_id: providerTxId })
+      await safeAudit(supabase, null, 'transaction_not_found', callbackEnv, { merchantRef, providerTxId })
+      return res.status(404).json({ success: false, error: 'transaction_not_found' })
+    }
+
+    // ─── 10. ENVIRONMENT ISOLATION ───
+    const paymentEnv = payment.metadata?.payment_environment || 'production'
+    if (paymentEnv !== callbackEnv) {
+      log.warn('environment_mismatch', { payment: paymentEnv, callback: callbackEnv })
+      await safeAudit(supabase, payment.id, 'environment_mismatch', callbackEnv, { paymentEnv, callbackEnv })
+      return res.status(400).json({ success: false, error: 'environment_mismatch' })
+    }
+
+    // ─── 11. PRODUCT TYPE GUARD ───
+    if (!ALLOWED_PRODUCT_TYPES.includes(payment.product_type)) {
+      log.warn('product_type_rejected', { type: payment.product_type })
+      return res.status(400).json({ success: false, error: 'product_type_not_supported' })
+    }
+
+    // ─── 12. AMOUNT VERIFICATION ───
+    if (callbackAmount != null && Math.abs(Number(payment.total_amount) - callbackAmount) > 1) {
+      log.warn('amount_mismatch', { expected: payment.total_amount, received: callbackAmount })
+      await safeAudit(supabase, payment.id, 'amount_mismatch', callbackEnv, { expected: payment.total_amount, received: callbackAmount })
+      return res.status(400).json({ success: false, error: 'amount_mismatch' })
+    }
+
+    // ─── 13. STATUS MAPPING ───
+    const newStatus = mapStatus(providerStatus)
+    if (!newStatus) {
+      log.warn('unknown_status', { providerStatus })
+      await safeAudit(supabase, payment.id, 'unknown_status', callbackEnv, { providerStatus })
+      return res.status(400).json({ success: false, error: 'unknown_status' })
+    }
+
+    // ─── 14. IDEMPOTENCY ───
+    if (svixId && payment.metadata?.sumopod_svix_id === svixId) {
+      log.info('duplicate_webhook_ignored', { svix_id: svixId })
+      return res.status(200).json({ success: true })
+    }
+
+    const FINAL_STATES = ['paid', 'verified', 'refunded']
+    if (FINAL_STATES.includes(payment.status) && newStatus === 'paid') {
+      log.info('already_final_state', { current: payment.status })
+      return res.status(200).json({ success: true })
+    }
+
+    const PRIORITY = { pending: 0, waiting_verification: 1, under_review: 2, paid: 3, verified: 4, expired: -1, failed: -1, refunded: 5 }
+    if ((PRIORITY[payment.status] || 0) > (PRIORITY[newStatus] || 0) && newStatus !== 'refunded') {
+      log.info('status_regression_blocked', { current: payment.status, attempted: newStatus })
+      return res.status(200).json({ success: true })
+    }
+
+    // ─── 15. UPDATE TRANSACTION ───
+    const updatePayload = {
+      status: newStatus,
+      payment_method: 'sumopod',
+      paid_at: newStatus === 'paid' ? (paidAt || new Date().toISOString()) : payment.paid_at,
+      sumopod_payment_id: providerTxId || payment.sumopod_payment_id,
+      sumopod_payment_channel: paymentChannel || payment.sumopod_payment_channel,
+      gateway_fee_amount: providerFee != null ? providerFee : (payment.gateway_fee_amount || 0),
+      provider_net_amount: providerNetAmount != null ? providerNetAmount : (payment.provider_net_amount || 0),
+      fulfillment_status: newStatus === 'paid' ? 'processing' : (newStatus === 'expired' || newStatus === 'failed' ? 'cancelled' : payment.fulfillment_status),
+      metadata: {
+        ...(payment.metadata || {}),
+        sumopod_transaction_id: providerTxId,
+        sumopod_svix_id: svixId || null,
+        sumopod_event_type: eventType,
+        sumopod_payment_method: paymentMethod,
+        sumopod_payment_channel: paymentChannel,
+        sumopod_fee: providerFee,
+        sumopod_net_amount: providerNetAmount,
+        sumopod_callback_at: new Date().toISOString(),
+        payment_environment: callbackEnv,
+      },
+      updated_at: new Date().toISOString(),
+    }
+
+    const { error: updateErr } = await supabase
+      .from('kinora_marketplace_payments')
+      .update(updatePayload)
+      .eq('id', payment.id)
+
+    if (updateErr) {
+      log.error('update_failed', { error: updateErr.message, payment_id: payment.id })
+      await safeAudit(supabase, payment.id, 'update_failed', callbackEnv, { error: updateErr.message })
+      return res.status(500).json({ success: false, error: 'update_failed' })
+    }
+
+    // ─── 16. FULFILLMENT ───
+    if (newStatus === 'paid') {
+      const fulfilled = await executeFulfillment(supabase, payment, log)
+      await supabase.from('kinora_marketplace_payments').update({
+        fulfillment_status: fulfilled ? 'completed' : 'failed',
+        updated_at: new Date().toISOString()
+      }).eq('id', payment.id)
+    }
+
+    // ─── 17. RELEASE ───
+    if (newStatus === 'expired' || newStatus === 'failed') {
+      await executeRelease(supabase, payment, log)
+    }
+
+    // ─── 18. AUDIT ───
+    await safeAudit(supabase, payment.id, `callback_${newStatus}`, callbackEnv, {
+      providerTxId, svixId, amount: callbackAmount, method: paymentMethod, channel: paymentChannel
     })
-    await supabase.from('kinora_marketplace_payments').update({
-      admin_note: `Sumopod amount mismatch: expected ${payment.total_amount}, got ${callbackAmount}`,
-      updated_at: new Date().toISOString()
-    }).eq('id', payment.id)
-    return res.status(400).json({ success: false })
-  }
 
-  if (callbackCurrency && callbackCurrency.toUpperCase() !== (payment.currency || 'IDR').toUpperCase()) {
-    await logAudit(supabase, payment.id, 'currency_mismatch', callbackEnv, {
-      expected: payment.currency, received: callbackCurrency
-    })
-    return res.status(400).json({ success: false })
-  }
-
-  // ─── 10. STATUS MAPPING ───
-  const newStatus = mapStatus(providerStatus)
-  if (!newStatus) {
-    await logAudit(supabase, payment.id, 'unknown_status', callbackEnv, { providerStatus })
-    return res.status(400).json({ success: false })
-  }
-
-  // ─── 11. IDEMPOTENCY ───
-  const FINAL_STATES = ['paid', 'verified', 'refunded']
-  if (FINAL_STATES.includes(payment.status) && newStatus === 'paid') {
-    // Already processed — acknowledge without re-processing
+    log.info('webhook_processed', { payment_id: payment.id, new_status: newStatus })
     return res.status(200).json({ success: true })
+
+  } catch (err) {
+    // Top-level catch — log real error server-side, return minimal response
+    log.error('unhandled_exception', { error: err.message, stack: err.stack })
+    return res.status(500).json({ success: false, error: 'internal_error' })
   }
-
-  // Prevent status regression (except refund)
-  const PRIORITY = { pending: 0, waiting_verification: 1, under_review: 2, paid: 3, verified: 4, expired: -1, failed: -1, refunded: 5 }
-  if ((PRIORITY[payment.status] || 0) > (PRIORITY[newStatus] || 0) && newStatus !== 'refunded') {
-    return res.status(200).json({ success: true })
-  }
-
-  // ─── 12. UPDATE TRANSACTION ───
-  const updatePayload = {
-    status: newStatus,
-    payment_method: 'sumopod',
-    paid_at: newStatus === 'paid' ? (paidAt || new Date().toISOString()) : payment.paid_at,
-    metadata: {
-      ...(payment.metadata || {}),
-      sumopod_transaction_id: providerTxId,
-      sumopod_event_id: eventId || null,
-      sumopod_payment_method: paymentMethod,
-      sumopod_callback_at: new Date().toISOString(),
-      payment_environment: callbackEnv,
-    },
-    updated_at: new Date().toISOString(),
-  }
-
-  const { error: updateErr } = await supabase
-    .from('kinora_marketplace_payments')
-    .update(updatePayload)
-    .eq('id', payment.id)
-
-  if (updateErr) {
-    await logAudit(supabase, payment.id, 'update_failed', callbackEnv, { error: updateErr.message })
-    // Return 500 so Sumopod retries
-    return res.status(500).json({ success: false })
-  }
-
-  // ─── 13. FULFILLMENT (only for paid) ───
-  if (newStatus === 'paid') {
-    await executeFulfillment(supabase, payment)
-  }
-
-  // ─── 14. RELEASE (for failed/expired) ───
-  if (newStatus === 'expired' || newStatus === 'failed') {
-    await executeRelease(supabase, payment)
-  }
-
-  // ─── 15. AUDIT LOG ───
-  await logAudit(supabase, payment.id, `callback_${newStatus}`, callbackEnv, {
-    providerTxId, eventId, amount: callbackAmount, method: paymentMethod
-  })
-
-  return res.status(200).json({ success: true })
 }
 
 // ═══════════════════════════════════════════
@@ -182,36 +261,125 @@ module.exports = async function handler(req, res) {
 // ═══════════════════════════════════════════
 
 function detectEnvironment(req) {
-  const h = req.headers['x-sumopod-environment'] || ''
+  const h = (req.headers['x-sumopod-environment'] || '').toLowerCase().trim()
   if (h === 'sandbox') return 'sandbox'
   if (h === 'production') return 'production'
   if ((req.url || '').includes('/sandbox')) return 'sandbox'
-  return 'production'
+  return 'sandbox' // Default to sandbox for safety during development
+}
+
+/**
+ * Load config from env vars first, DB fallback.
+ */
+async function loadConfig(env, supabase) {
+  // Try env vars first
+  const envConfig = getConfigFromEnv(env)
+  if (envConfig.webhookToken || envConfig.webhookSecret) {
+    return envConfig
+  }
+
+  // DB fallback
+  try {
+    const { data } = await supabase
+      .from('kinora_payment_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle() // Use maybeSingle — never throws if missing
+
+    if (!data) return { webhookSecret: '', webhookToken: '', apiUrl: '', apiKey: '' }
+
+    if (env === 'sandbox') {
+      return {
+        apiUrl: data.sumopod_sandbox_api_url || '',
+        apiKey: data.sumopod_sandbox_api_key || '',
+        webhookSecret: data.sumopod_sandbox_webhook_secret || '',
+        webhookToken: data.sumopod_sandbox_webhook_token || '',
+      }
+    }
+    return {
+      apiUrl: data.sumopod_production_api_url || '',
+      apiKey: data.sumopod_production_api_key || '',
+      webhookSecret: data.sumopod_production_webhook_secret || '',
+      webhookToken: data.sumopod_production_webhook_token || '',
+    }
+  } catch (e) {
+    // DB might be unreachable — return env-only config
+    return envConfig
+  }
 }
 
 function getConfigFromEnv(env) {
   if (env === 'sandbox') {
-    return { apiUrl: process.env.SUMOPOD_SANDBOX_API_URL || '', apiKey: process.env.SUMOPOD_SANDBOX_API_KEY || '', secret: process.env.SUMOPOD_SANDBOX_SECRET || '' }
+    return {
+      apiUrl: process.env.SUMOPOD_SANDBOX_API_URL || '',
+      apiKey: process.env.SUMOPOD_SANDBOX_API_KEY || '',
+      webhookSecret: process.env.SUMOPOD_SANDBOX_WEBHOOK_SECRET || '',
+      webhookToken: process.env.SUMOPOD_SANDBOX_WEBHOOK_TOKEN || '',
+    }
   }
-  return { apiUrl: process.env.SUMOPOD_PRODUCTION_API_URL || '', apiKey: process.env.SUMOPOD_PRODUCTION_API_KEY || '', secret: process.env.SUMOPOD_PRODUCTION_SECRET || '' }
+  return {
+    apiUrl: process.env.SUMOPOD_PRODUCTION_API_URL || '',
+    apiKey: process.env.SUMOPOD_PRODUCTION_API_KEY || '',
+    webhookSecret: process.env.SUMOPOD_PRODUCTION_WEBHOOK_SECRET || '',
+    webhookToken: process.env.SUMOPOD_PRODUCTION_WEBHOOK_TOKEN || '',
+  }
 }
 
-async function getConfigFromDb(env, supabase) {
-  const { data } = await supabase.from('kinora_payment_settings').select('*').eq('id', 1).single()
-  if (!data) return null
-  if (env === 'sandbox') {
-    return { apiUrl: data.sumopod_sandbox_api_url || '', apiKey: data.sumopod_sandbox_api_key || '', secret: data.sumopod_sandbox_secret || '' }
+/**
+ * Svix signature verification.
+ * Returns: { status: 'valid' | 'failed' | 'skipped' }
+ */
+function verifySvixSignature(req, rawBody, webhookSecret) {
+  const svixId = req.headers['svix-id']
+  const svixTimestamp = req.headers['svix-timestamp']
+  const svixSignature = req.headers['svix-signature']
+
+  // If no svix headers, skip (test webhooks may not include them)
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    return { status: 'skipped' }
   }
-  return { apiUrl: data.sumopod_production_api_url || '', apiKey: data.sumopod_production_api_key || '', secret: data.sumopod_production_secret || '' }
+
+  try {
+    const signedContent = `${svixId}.${svixTimestamp}.${rawBody}`
+
+    // Remove whsec_ prefix, base64 decode
+    const secretStr = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret
+    let secretBytes
+    try { secretBytes = Buffer.from(secretStr, 'base64') }
+    catch { secretBytes = Buffer.from(secretStr) }
+
+    const expectedSig = crypto.createHmac('sha256', secretBytes).update(signedContent).digest('base64')
+
+    // Multiple v1 signatures separated by space
+    const signatures = svixSignature.split(' ')
+    for (const sig of signatures) {
+      const commaIdx = sig.indexOf(',')
+      if (commaIdx === -1) continue
+      const version = sig.slice(0, commaIdx)
+      const value = sig.slice(commaIdx + 1)
+      if (version === 'v1' && timingSafeCompare(value, expectedSig)) {
+        // Timestamp tolerance check (5 min)
+        const ts = parseInt(svixTimestamp, 10)
+        const now = Math.floor(Date.now() / 1000)
+        if (Math.abs(now - ts) > 300) return { status: 'failed' }
+        return { status: 'valid' }
+      }
+    }
+    return { status: 'failed' }
+  } catch {
+    return { status: 'failed' }
+  }
 }
 
-function timingSafeEqual(a, b) {
-  if (a.length !== b.length) return false
-  try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)) }
+function timingSafeCompare(a, b) {
+  if (!a || !b) return false
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  try { return crypto.timingSafeEqual(bufA, bufB) }
   catch { return false }
 }
 
-// TODO: Map actual Sumopod documented statuses
 function mapStatus(providerStatus) {
   const map = {
     'PAID': 'paid', 'SUCCESS': 'paid', 'COMPLETED': 'paid', 'SETTLED': 'paid',
@@ -223,45 +391,54 @@ function mapStatus(providerStatus) {
   return map[(providerStatus || '').toUpperCase()] || null
 }
 
-async function executeFulfillment(supabase, payment) {
+async function executeFulfillment(supabase, payment, log) {
   const type = payment.product_type
   try {
     if (type === 'webinar') {
-      await supabase.from('kinora_webinar_registrations')
+      const { error } = await supabase.from('kinora_webinar_registrations')
         .update({ status: 'approved', reviewed_at: new Date().toISOString() })
         .eq('payment_id', payment.id)
         .eq('status', 'pending')
+      if (error) throw error
     } else if (type === 'consultation') {
-      await supabase.from('kinora_consultation_sessions')
+      const { error } = await supabase.from('kinora_consultation_sessions')
         .update({ status: 'paid', updated_at: new Date().toISOString() })
         .eq('payment_id', payment.id)
         .in('status', ['draft', 'awaiting_payment'])
+      if (error) throw error
     } else if (type === 'marketplace') {
-      await supabase.from('kinora_print_orders')
+      const { error } = await supabase.from('kinora_print_orders')
         .update({ status: 'paid', updated_at: new Date().toISOString() })
         .eq('payment_id', payment.id)
         .eq('status', 'pending_payment')
+      if (error) throw error
     }
+    log.info('fulfillment_success', { type, payment_id: payment.id })
+    return true
   } catch (e) {
-    await logAudit(supabase, payment.id, 'fulfillment_error', payment.metadata?.payment_environment || 'production', { type, error: e.message })
+    log.error('fulfillment_error', { type, payment_id: payment.id, error: e.message })
+    await safeAudit(supabase, payment.id, 'fulfillment_error', payment.metadata?.payment_environment || 'production', { type, error: e.message })
+    return false
   }
 }
 
-async function executeRelease(supabase, payment) {
-  const type = payment.product_type
+async function executeRelease(supabase, payment, log) {
   try {
-    if (type === 'consultation') {
-      // Release reserved slot
+    if (payment.product_type === 'consultation') {
       await supabase.from('kinora_consultation_sessions')
         .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('payment_id', payment.id)
         .in('status', ['draft', 'awaiting_payment'])
     }
-    // Marketplace/webinar: existing architecture handles expiry via separate cron or no reservation
-  } catch (e) { /* non-critical */ }
+  } catch (e) {
+    log.error('release_error', { error: e.message })
+  }
 }
 
-async function logAudit(supabase, paymentId, action, env, metadata) {
+/**
+ * Safe audit log — never throws.
+ */
+async function safeAudit(supabase, paymentId, action, env, metadata) {
   try {
     await supabase.from('kinora_payment_audit_log').insert({
       payment_id: paymentId,
@@ -270,5 +447,18 @@ async function logAudit(supabase, paymentId, action, env, metadata) {
       status_after: null,
       metadata: { ...metadata, environment: env, timestamp: new Date().toISOString() },
     })
-  } catch { /* non-critical */ }
+  } catch { /* never throw from audit */ }
+}
+
+/**
+ * Structured logger (server-side only, never exposes secrets).
+ */
+function createLogger() {
+  const entries = []
+  const prefix = '[Sumopod Webhook]'
+  return {
+    info: (msg, data) => console.log(prefix, msg, data ? JSON.stringify(data) : ''),
+    warn: (msg, data) => console.warn(prefix, msg, data ? JSON.stringify(data) : ''),
+    error: (msg, data) => console.error(prefix, msg, data ? JSON.stringify(data) : ''),
+  }
 }

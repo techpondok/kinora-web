@@ -762,8 +762,9 @@
                 <p class="text-xs font-medium text-purple-800 mb-2">Sandbox Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
                   <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_sandbox_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://sandbox.sumopod.com/api" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_sandbox_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="sk_sandbox_..." @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Secret Key</label><input v-model="paymentSettings.sumopod_sandbox_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="whsec_sandbox_..." @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_sandbox_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_sandbox_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_sandbox_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
                 </div>
               </div>
 
@@ -772,8 +773,9 @@
                 <p class="text-xs font-medium text-purple-800 mb-2">Production Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
                   <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_production_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api.sumopod.com/v1" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_production_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="sk_live_..." @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Secret Key</label><input v-model="paymentSettings.sumopod_production_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="whsec_live_..." @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_production_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_production_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_production_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
                 </div>
               </div>
 
@@ -793,17 +795,32 @@
                 <p class="text-xs font-medium text-gray-700">Webinar</p>
                 <div><label class="block text-xs text-gray-400">Fixed (IDR)</label><input v-model.number="paymentSettings.webinar_app_fee_fixed" type="number" min="0" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @input="markDirty" /></div>
                 <div><label class="block text-xs text-gray-400">Percent (%)</label><input v-model.number="paymentSettings.webinar_app_fee_percent" type="number" min="0" max="100" step="0.1" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @input="markDirty" /></div>
+                <div><label class="block text-xs text-gray-400">Ditanggung</label>
+                  <select v-model="paymentSettings.webinar_fee_bearer" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @change="markDirty">
+                    <option value="customer">Customer</option><option value="partner">Partner</option>
+                  </select>
+                </div>
               </div>
               <div class="p-3 bg-gray-50 rounded-lg space-y-2">
                 <p class="text-xs font-medium text-gray-700">Konsultasi</p>
                 <div><label class="block text-xs text-gray-400">Fixed (IDR)</label><input v-model.number="paymentSettings.consultation_app_fee_fixed" type="number" min="0" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @input="markDirty" /></div>
                 <div><label class="block text-xs text-gray-400">Percent (%)</label><input v-model.number="paymentSettings.consultation_app_fee_percent" type="number" min="0" max="100" step="0.1" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @input="markDirty" /></div>
+                <div><label class="block text-xs text-gray-400">Ditanggung</label>
+                  <select v-model="paymentSettings.consultation_fee_bearer" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @change="markDirty">
+                    <option value="customer">Customer</option><option value="partner">Konsultan</option>
+                  </select>
+                </div>
               </div>
               <div class="p-3 bg-gray-50 rounded-lg space-y-2">
-                <p class="text-xs font-medium text-gray-700">Print / Merchandise</p>
+                <p class="text-xs font-medium text-gray-700">Marketplace / Print</p>
                 <div><label class="block text-xs text-gray-400">Fixed (IDR)</label><input v-model.number="paymentSettings.print_app_fee_fixed" type="number" min="0" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @input="markDirty" /></div>
                 <div><label class="block text-xs text-gray-400">Percent (%)</label><input v-model.number="paymentSettings.print_app_fee_percent" type="number" min="0" max="100" step="0.1" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @input="markDirty" /></div>
                 <div><label class="block text-xs text-gray-400">Shipping Flat (IDR)</label><input v-model.number="paymentSettings.print_shipping_flat" type="number" min="0" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @input="markDirty" /></div>
+                <div><label class="block text-xs text-gray-400">Ditanggung</label>
+                  <select v-model="paymentSettings.marketplace_fee_bearer" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @change="markDirty">
+                    <option value="customer">Customer</option><option value="partner">Seller</option>
+                  </select>
+                </div>
               </div>
               <div class="p-3 bg-gray-50 rounded-lg space-y-2">
                 <p class="text-xs font-medium text-gray-700">PPOB</p>
