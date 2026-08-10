@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <PublicHeader />
 
     <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8" :class="{ 'xl:max-w-5xl': hasToc }">
       <div v-if="loading" class="text-center py-12 text-gray-500">Memuat artikel...</div>
@@ -29,8 +28,10 @@
           <span>{{ formatDate(article.published_at) }}</span>
           <span>·</span>
           <span>{{ readTime }} menit baca</span>
-          <span class="hidden sm:inline">·</span>
-          <ArticleShare :title="article.title" :url="currentUrl" />
+          <template v-if="!isInApp">
+            <span class="hidden sm:inline">·</span>
+            <ArticleShare :title="article.title" :url="currentUrl" />
+          </template>
         </div>
 
         <!-- Cover -->
@@ -40,7 +41,7 @@
 
         <!-- Ad after intro for long articles -->
         <ArticleAdSlot
-          v-if="wordCount > 700 && !article.sensitive"
+          v-if="wordCount > 700 && !article.sensitive && !isInApp"
           placement="article_detail_after_intro"
           :slot-id="getAdSlot('article_detail_after_intro')"
           :ads-free="isAdsFree"
@@ -61,7 +62,7 @@
 
         <!-- Ad after article body -->
         <ArticleAdSlot
-          v-if="!article.sensitive"
+          v-if="!article.sensitive && !isInApp"
           placement="article_detail_before_related"
           :slot-id="getAdSlot('article_detail_before_related')"
           :ads-free="isAdsFree"
@@ -81,7 +82,7 @@
         </div>
 
         <!-- Share (bottom of article) -->
-        <div class="mt-8 border-t border-gray-100 pt-6 flex items-center gap-3">
+        <div v-if="!isInApp" class="mt-8 border-t border-gray-100 pt-6 flex items-center gap-3">
           <span class="text-xs text-gray-500 font-medium">Bagikan artikel ini</span>
           <ArticleShare :title="article.title" :url="currentUrl" />
         </div>
