@@ -722,7 +722,7 @@
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Primary Gateway</label>
                 <select v-model="paymentSettings.primary_payment_gateway" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" @change="markDirty">
-                  <option value="xendit">Xendit</option><option value="tripay">Tripay</option><option value="stripe">Stripe</option><option value="manual">Manual</option>
+                  <option value="xendit">Xendit</option><option value="tripay">Tripay</option><option value="sumopod">Sumopod</option><option value="stripe">Stripe</option><option value="manual">Manual</option>
                 </select>
               </div>
               <div><label class="block text-xs text-gray-500 mb-1">Tripay Default Method</label>
@@ -732,9 +732,55 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
               <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.xendit_enabled" class="rounded" @change="markDirty" /> Xendit</label>
               <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.tripay_enabled" class="rounded" @change="markDirty" /> Tripay</label>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.sumopod_enabled" class="rounded" @change="markDirty" /> Sumopod</label>
               <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.stripe_enabled" class="rounded" @change="markDirty" /> Stripe</label>
               <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.manual_transfer_enabled" class="rounded" @change="markDirty" /> Manual Transfer</label>
               <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.tripay_sandbox" class="rounded" @change="markDirty" /> Tripay Sandbox</label>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.sumopod_sandbox" class="rounded" @change="markDirty" /> Sumopod Sandbox</label>
+            </div>
+
+            <!-- Sumopod Configuration -->
+            <div v-if="paymentSettings.sumopod_enabled" class="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-lg space-y-3">
+              <h4 class="text-sm font-semibold text-purple-900">Sumopod Configuration</h4>
+              <p class="text-xs text-purple-700">Sumopod digunakan untuk: Webinar, Marketplace, Consultation.</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Mode</label>
+                  <select v-model="paymentSettings.sumopod_sandbox" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" @change="markDirty">
+                    <option :value="true">Sandbox (Testing)</option>
+                    <option :value="false">Production</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Digunakan Untuk</label>
+                  <p class="text-xs text-gray-600 mt-1">Webinar · Marketplace · Consultation</p>
+                </div>
+              </div>
+
+              <!-- Sandbox Credentials -->
+              <div class="border-t border-purple-200 pt-3 mt-3">
+                <p class="text-xs font-medium text-purple-800 mb-2">Sandbox Credentials</p>
+                <div class="grid grid-cols-1 gap-2">
+                  <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_sandbox_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://sandbox.sumopod.com/api" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_sandbox_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="sk_sandbox_..." @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Secret Key</label><input v-model="paymentSettings.sumopod_sandbox_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="whsec_sandbox_..." @input="markDirty" /></div>
+                </div>
+              </div>
+
+              <!-- Production Credentials -->
+              <div class="border-t border-purple-200 pt-3 mt-3">
+                <p class="text-xs font-medium text-purple-800 mb-2">Production Credentials</p>
+                <div class="grid grid-cols-1 gap-2">
+                  <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_production_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api.sumopod.com/v1" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_production_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="sk_live_..." @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Secret Key</label><input v-model="paymentSettings.sumopod_production_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="whsec_live_..." @input="markDirty" /></div>
+                </div>
+              </div>
+
+              <div v-if="paymentSettings.sumopod_sandbox" class="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <span class="text-yellow-600 text-xs font-medium">⚠ SANDBOX MODE</span>
+                <span class="text-xs text-yellow-700">Transaksi tidak akan memproses pembayaran nyata.</span>
+              </div>
             </div>
           </div>
 

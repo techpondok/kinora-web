@@ -35,6 +35,10 @@
       "destination": "/api/payments/tripay/callback"
     },
     {
+      "source": "/api/payments/sumopod/callback",
+      "destination": "/api/payments/sumopod/callback"
+    },
+    {
       "source": "/articles/:slug",
       "destination": "/api/og/articles/:slug",
       "has": [
