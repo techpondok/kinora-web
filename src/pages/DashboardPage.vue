@@ -355,6 +355,16 @@
           <StorageManagementPage />
         </div>
 
+        <!-- Environment & Infrastructure -->
+        <div v-if="activeMenu === 'environment'">
+          <EnvironmentPage @navigate="(target) => { activeMenu = target }" />
+        </div>
+
+        <!-- Production Deployment -->
+        <div v-if="activeMenu === 'deployment'">
+          <ProductionDeploymentPage />
+        </div>
+
         <!-- API Credentials -->
         <div v-if="activeMenu === 'api'">
           <ApiCredentialsPage />
@@ -439,7 +449,7 @@ import ConsultantSessionsPage from './ConsultantSessionsPage.vue'
 import ConsultationPaymentsPage from './ConsultationPaymentsPage.vue'
 import ManualPaymentsPage from './ManualPaymentsPage.vue'
 import AdminOverview from './AdminOverview.vue'
-import { LayoutDashboard, Users, FileText, Video, MessagesSquare, ShieldAlert, Headphones, CreditCard, TrendingUp, Code, Globe, Info, ToggleLeft, ShoppingBag, Search, Settings, ExternalLink, Share2, Tag, MessageCircle } from '@lucide/vue'
+import { LayoutDashboard, Users, FileText, Video, MessagesSquare, ShieldAlert, Headphones, CreditCard, TrendingUp, Code, Globe, Info, ToggleLeft, ShoppingBag, Search, Settings, ExternalLink, Share2, Tag, MessageCircle, Server, Rocket } from '@lucide/vue'
 import SocialLinksPage from './SocialLinksPage.vue'
 import ContentCategoriesPage from './ContentCategoriesPage.vue'
 import CommentModerationPage from './CommentModerationPage.vue'
@@ -455,6 +465,8 @@ import FeatureTogglesPage from './FeatureTogglesPage.vue'
 import ProductsPage from './ProductsPage.vue'
 import GoogleServicesPage from './GoogleServicesPage.vue'
 import StorageManagementPage from './StorageManagementPage.vue'
+import EnvironmentPage from './EnvironmentPage.vue'
+import ProductionDeploymentPage from './ProductionDeploymentPage.vue'
 
 const router = useRouter()
 const PAGE_SIZE = 10
@@ -529,6 +541,8 @@ const menuItems = [
   { id: 'products', label: 'Produk', icon: ShoppingBag },
   { id: 'google', label: 'Google Services', icon: Search },
   { id: 'storage', label: 'Storage', icon: Code },
+  { id: 'environment', label: 'Environment', icon: Server },
+  { id: 'deployment', label: 'Deployment', icon: Rocket },
   { id: 'settings', label: 'Pengaturan', icon: Settings },
 ]
 

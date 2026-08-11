@@ -719,24 +719,84 @@
           <!-- Payment Gateway -->
           <div class="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
             <h3 class="font-semibold text-gray-900">Payment Gateway</h3>
+            <p class="text-xs text-gray-500">Digunakan untuk: Webinar, Consultant, Marketplace, Digital Products. <strong>Bukan</strong> untuk Family Plus (Google Play Billing).</p>
+
+            <!-- Primary Gateway -->
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Primary Gateway</label>
                 <select v-model="paymentSettings.primary_payment_gateway" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" @change="markDirty">
-                  <option value="xendit">Xendit</option><option value="tripay">Tripay</option><option value="sumopod">Sumopod</option><option value="stripe">Stripe</option><option value="manual">Manual</option>
+                  <option value="sumopod">Sumopod</option>
+                  <option value="tripay">Tripay</option>
+                  <option value="xendit">Xendit</option>
+                  <option value="stripe">Stripe</option>
+                  <option value="manual">Manual Transfer</option>
                 </select>
               </div>
-              <div><label class="block text-xs text-gray-500 mb-1">Tripay Default Method</label>
-                <input v-model="paymentSettings.tripay_default_method" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" @input="markDirty" />
-              </div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.xendit_enabled" class="rounded" @change="markDirty" /> Xendit</label>
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.tripay_enabled" class="rounded" @change="markDirty" /> Tripay</label>
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.sumopod_enabled" class="rounded" @change="markDirty" /> Sumopod</label>
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.stripe_enabled" class="rounded" @change="markDirty" /> Stripe</label>
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.manual_transfer_enabled" class="rounded" @change="markDirty" /> Manual Transfer</label>
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.tripay_sandbox" class="rounded" @change="markDirty" /> Tripay Sandbox</label>
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.sumopod_sandbox" class="rounded" @change="markDirty" /> Sumopod Sandbox</label>
+
+            <!-- Validation Warning -->
+            <div v-if="primaryGatewayWarning" class="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+              <span class="text-red-600 text-xs font-medium">⚠</span>
+              <span class="text-xs text-red-700">{{ primaryGatewayWarning }}</span>
+            </div>
+
+            <!-- Available Gateways -->
+            <div class="space-y-3">
+              <p class="text-xs font-medium text-gray-700">Available Gateways</p>
+
+              <!-- Sumopod -->
+              <div class="border border-gray-100 rounded-lg p-3 space-y-2" :class="paymentSettings.sumopod_enabled ? 'bg-purple-50/50' : ''">
+                <div class="flex items-center justify-between">
+                  <label class="flex items-center gap-2 text-sm font-medium"><input type="checkbox" v-model="paymentSettings.sumopod_enabled" class="rounded text-purple-600" @change="markDirty" /> Sumopod</label>
+                  <span v-if="paymentSettings.primary_payment_gateway === 'sumopod'" class="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">PRIMARY</span>
+                </div>
+                <div v-if="paymentSettings.sumopod_enabled" class="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-1">Environment</label>
+                    <select v-model="paymentSettings.sumopod_sandbox" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @change="markDirty">
+                      <option :value="true">Sandbox</option>
+                      <option :value="false">Production</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-1">Default Method</label>
+                    <select v-model="paymentSettings.sumopod_default_method" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @change="markDirty">
+                      <option value="qris">QRIS</option>
+                      <option value="QRIS_INSTANT">QRIS Instant</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tripay -->
+              <div class="border border-gray-100 rounded-lg p-3 space-y-2" :class="paymentSettings.tripay_enabled ? 'bg-blue-50/50' : ''">
+                <div class="flex items-center justify-between">
+                  <label class="flex items-center gap-2 text-sm font-medium"><input type="checkbox" v-model="paymentSettings.tripay_enabled" class="rounded text-blue-600" @change="markDirty" /> Tripay</label>
+                  <span v-if="paymentSettings.primary_payment_gateway === 'tripay'" class="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">PRIMARY</span>
+                </div>
+                <div v-if="paymentSettings.tripay_enabled" class="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-1">Environment</label>
+                    <select v-model="paymentSettings.tripay_sandbox" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" @change="markDirty">
+                      <option :value="true">Sandbox</option>
+                      <option :value="false">Production</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500 mb-1">Default Method</label>
+                    <input v-model="paymentSettings.tripay_default_method" type="text" class="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none" placeholder="QRIS" @input="markDirty" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Others -->
+              <div class="border border-gray-100 rounded-lg p-3">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.xendit_enabled" class="rounded" @change="markDirty" /> Xendit</label>
+                  <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.stripe_enabled" class="rounded" @change="markDirty" /> Stripe</label>
+                  <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="paymentSettings.manual_transfer_enabled" class="rounded" @change="markDirty" /> Manual Transfer</label>
+                </div>
+              </div>
             </div>
 
             <!-- Sumopod Configuration -->
@@ -907,6 +967,23 @@ const settingsMap = ref({})
 const data = ref({})
 const originalData = ref({})
 const paymentSettings = ref({})
+
+// Primary gateway validation
+const primaryGatewayWarning = computed(() => {
+  const pg = paymentSettings.value.primary_payment_gateway
+  if (!pg) return ''
+  const enabledMap = {
+    sumopod: paymentSettings.value.sumopod_enabled,
+    tripay: paymentSettings.value.tripay_enabled,
+    xendit: paymentSettings.value.xendit_enabled,
+    stripe: paymentSettings.value.stripe_enabled,
+    manual: paymentSettings.value.manual_transfer_enabled,
+  }
+  if (enabledMap[pg] === false) {
+    return `Primary gateway "${pg}" belum di-enable. Aktifkan gateway tersebut atau pilih primary gateway lain.`
+  }
+  return ''
+})
 
 // Landing page config
 const landingConfig = ref({})

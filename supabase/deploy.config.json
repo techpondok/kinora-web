@@ -1,0 +1,95 @@
+{
+  "version": "1.0.0",
+  "description": "Kinora Production Deployment Configuration",
+  "deployment_order": [
+    "database_migrations",
+    "rls_policies",
+    "edge_function_secrets",
+    "edge_functions",
+    "storage_policies",
+    "post_deployment_verification"
+  ],
+  "edge_functions": [
+    {
+      "name": "sumopod-webhook",
+      "description": "Sumopod payment webhook handler",
+      "verify_jwt": false,
+      "required_secrets": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUMOPOD_WEBHOOK_SECRET",
+        "SUMOPOD_WEBHOOK_TOKEN"
+      ],
+      "depends_on_migrations": [],
+      "category": "payment"
+    },
+    {
+      "name": "tripay-webhook",
+      "description": "Tripay payment webhook handler",
+      "verify_jwt": false,
+      "required_secrets": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "TRIPAY_PRIVATE_KEY"
+      ],
+      "depends_on_migrations": [],
+      "category": "payment"
+    },
+    {
+      "name": "payment-create",
+      "description": "Create payment transactions (Sumopod/Tripay)",
+      "verify_jwt": true,
+      "required_secrets": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUMOPOD_API_KEY",
+        "SUMOPOD_API_URL"
+      ],
+      "depends_on_migrations": ["fix_payment_method_constraint"],
+      "category": "payment"
+    },
+    {
+      "name": "verify-google-play",
+      "description": "Google Play purchase verification for Family Plus",
+      "verify_jwt": true,
+      "required_secrets": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "GOOGLE_PLAY_SERVICE_ACCOUNT_KEY"
+      ],
+      "depends_on_migrations": [],
+      "category": "subscription"
+    },
+    {
+      "name": "send-notification",
+      "description": "Push notification sender (FCM)",
+      "verify_jwt": true,
+      "required_secrets": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "FCM_SERVER_KEY"
+      ],
+      "depends_on_migrations": [],
+      "category": "notification"
+    }
+  ],
+  "required_secrets": {
+    "all_environments": [
+      "SUPABASE_URL",
+      "SUPABASE_SERVICE_ROLE_KEY"
+    ],
+    "payment": [
+      "SUMOPOD_API_KEY",
+      "SUMOPOD_API_URL",
+      "SUMOPOD_WEBHOOK_SECRET",
+      "SUMOPOD_WEBHOOK_TOKEN",
+      "TRIPAY_PRIVATE_KEY"
+    ],
+    "subscription": [
+      "GOOGLE_PLAY_SERVICE_ACCOUNT_KEY"
+    ],
+    "notification": [
+      "FCM_SERVER_KEY"
+    ]
+  }
+}
