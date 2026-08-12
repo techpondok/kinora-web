@@ -345,6 +345,11 @@
           <ProductsPage />
         </div>
 
+        <!-- Promo Codes -->
+        <div v-if="activeMenu === 'promo'">
+          <PromoCodesPage />
+        </div>
+
         <!-- Google Services -->
         <div v-if="activeMenu === 'google'">
           <GoogleServicesPage />
@@ -467,6 +472,7 @@ import GoogleServicesPage from './GoogleServicesPage.vue'
 import StorageManagementPage from './StorageManagementPage.vue'
 import EnvironmentPage from './EnvironmentPage.vue'
 import ProductionDeploymentPage from './ProductionDeploymentPage.vue'
+import PromoCodesPage from './PromoCodesPage.vue'
 
 const router = useRouter()
 const PAGE_SIZE = 10
@@ -539,6 +545,7 @@ const menuItems = [
   { id: 'about_cms', label: 'About Kinora', icon: Info },
   { id: 'features', label: 'Feature Toggle', icon: ToggleLeft },
   { id: 'products', label: 'Produk', icon: ShoppingBag },
+  { id: 'promo', label: 'Promo Codes', icon: Tag },
   { id: 'google', label: 'Google Services', icon: Search },
   { id: 'storage', label: 'Storage', icon: Code },
   { id: 'environment', label: 'Environment', icon: Server },
