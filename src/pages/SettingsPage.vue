@@ -854,7 +854,7 @@
                     </span>
                   </div>
                   <button @click="testSumopodConnection" :disabled="testingSumopod" class="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition disabled:opacity-50">
-                    {{ testingSumopod ? 'Testing...' : 'Test Koneksi' }}
+                    {{ testingSumopod ? 'Validating...' : 'Validasi Konfigurasi' }}
                   </button>
                 </div>
                 <p v-if="sumopodMissingFields.length" class="text-xs text-red-600 mt-1">Missing: {{ sumopodMissingFields.join(', ') }}</p>
@@ -1006,31 +1006,33 @@ const sumopodConfigComplete = computed(() => sumopodMissingFields.value.length =
 async function testSumopodConnection() {
   testingSumopod.value = true
   sumopodTestResult.value = null
+
+  const ps = paymentSettings.value
+  const apiUrl = ps.sumopod_sandbox ? ps.sumopod_sandbox_api_url : ps.sumopod_production_api_url
+  const apiKey = ps.sumopod_sandbox ? ps.sumopod_sandbox_api_key : ps.sumopod_production_api_key
+
+  if (!apiUrl) {
+    sumopodTestResult.value = { success: false, message: 'API URL belum dikonfigurasi.' }
+    testingSumopod.value = false
+    return
+  }
+  if (!apiKey) {
+    sumopodTestResult.value = { success: false, message: 'API Key belum dikonfigurasi.' }
+    testingSumopod.value = false
+    return
+  }
+
+  // Can't test SumoPod directly from browser (CORS).
+  // Validate that config is complete and well-formed.
   try {
-    const { data, error } = await supabase.rpc('test_sumopod_connection')
-    if (error) {
-      // Fallback: test via a lightweight fetch to the API URL
-      const ps = paymentSettings.value
-      const apiUrl = ps.sumopod_sandbox ? ps.sumopod_sandbox_api_url : ps.sumopod_production_api_url
-      if (!apiUrl) {
-        sumopodTestResult.value = { success: false, message: 'API URL belum dikonfigurasi.' }
-      } else {
-        try {
-          const res = await fetch(apiUrl.replace(/\/+$/, '') + '/api/v1/health', { method: 'GET', signal: AbortSignal.timeout(5000) })
-          sumopodTestResult.value = res.ok
-            ? { success: true, message: '✓ Koneksi ke SumoPod berhasil.' }
-            : { success: false, message: `Koneksi gagal: HTTP ${res.status}` }
-        } catch (e) {
-          sumopodTestResult.value = { success: false, message: `Koneksi gagal: ${e.message}` }
-        }
-      }
+    const url = new URL(apiUrl)
+    if (!url.protocol.startsWith('https')) {
+      sumopodTestResult.value = { success: false, message: 'API URL harus menggunakan HTTPS.' }
     } else {
-      sumopodTestResult.value = data?.success
-        ? { success: true, message: '✓ Koneksi dan autentikasi berhasil.' }
-        : { success: false, message: data?.message || 'Test gagal.' }
+      sumopodTestResult.value = { success: true, message: `✓ Konfigurasi lengkap. URL: ${url.host}` }
     }
-  } catch (e) {
-    sumopodTestResult.value = { success: false, message: e.message }
+  } catch {
+    sumopodTestResult.value = { success: false, message: 'API URL tidak valid.' }
   }
   testingSumopod.value = false
 }
