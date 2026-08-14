@@ -35,29 +35,37 @@ module.exports = async function handler(req, res) {
     log.info('environment_detected', { env: callbackEnv })
 
     // ─── 3. LOAD WEBHOOK TOKEN ───
+    // Priority: direct env var → DB config → env-prefixed var
+    const directToken = process.env.SUMOPOD_WEBHOOK_TOKEN || ''
     const config = await loadConfig(callbackEnv, supabase)
-    log.info('config_loaded', { hasToken: !!config.webhookToken, hasSecret: !!config.webhookSecret })
+    const expectedToken = (directToken || config.webhookToken || '').trim()
 
-    // ─── 4. TOKEN VERIFICATION (primary — must work first) ───
+    log.info('config_loaded', {
+      hasDirectEnvToken: !!directToken,
+      hasDbToken: !!config.webhookToken,
+      hasSecret: !!config.webhookSecret,
+      tokenSource: directToken ? 'env' : config.webhookToken ? 'db' : 'none',
+    })
+
+    // ─── 4. TOKEN VERIFICATION ───
     const incomingToken = (req.headers['x-webhook-token'] || '').trim()
-    log.info('token_check', { token_present: !!incomingToken })
 
-    if (!config.webhookToken) {
+    if (!expectedToken) {
       log.error('webhook_token_not_configured', { env: callbackEnv })
-      return res.status(500).json({ success: false, error: 'webhook_token_not_configured' })
+      return res.status(500).json({ success: false, error: 'webhook_not_configured' })
     }
 
     if (!incomingToken) {
       log.warn('missing_webhook_token')
-      return res.status(401).json({ success: false, error: 'invalid_webhook_token' })
+      return res.status(401).json({ success: false, error: 'missing_webhook_token' })
     }
 
-    if (!timingSafeCompare(incomingToken, config.webhookToken.trim())) {
+    if (!timingSafeCompare(incomingToken, expectedToken)) {
       log.warn('invalid_webhook_token', {
         received_length: incomingToken.length,
-        expected_length: config.webhookToken.trim().length,
+        expected_length: expectedToken.length,
         received_prefix: incomingToken.substring(0, 10),
-        expected_prefix: config.webhookToken.trim().substring(0, 10),
+        expected_prefix: expectedToken.substring(0, 10),
         env: callbackEnv,
       })
       return res.status(401).json({ success: false, error: 'invalid_webhook_token' })
