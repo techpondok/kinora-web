@@ -822,6 +822,7 @@
                 <p class="text-xs font-medium text-purple-800 mb-2">Sandbox Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
                   <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_sandbox_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://sandbox.sumopod.com/api" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Merchant ID</label><input v-model="paymentSettings.sumopod_sandbox_merchant_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Merchant ID dari dashboard SumoPod" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_sandbox_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_sandbox_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_sandbox_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
@@ -833,6 +834,7 @@
                 <p class="text-xs font-medium text-purple-800 mb-2">Production Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
                   <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_production_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api.sumopod.com/v1" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">Merchant ID</label><input v-model="paymentSettings.sumopod_production_merchant_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Merchant ID dari dashboard SumoPod" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_production_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_production_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_production_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
@@ -842,6 +844,24 @@
               <div v-if="paymentSettings.sumopod_sandbox" class="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <span class="text-yellow-600 text-xs font-medium">⚠ SANDBOX MODE</span>
                 <span class="text-xs text-yellow-700">Transaksi tidak akan memproses pembayaran nyata.</span>
+              </div>
+
+              <!-- Configuration Status -->
+              <div class="border-t border-purple-200 pt-3 mt-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" :class="sumopodConfigComplete ? 'bg-green-500' : 'bg-red-500'"></span>
+                    <span class="text-xs font-medium" :class="sumopodConfigComplete ? 'text-green-700' : 'text-red-700'">
+                      {{ sumopodConfigComplete ? '● Konfigurasi lengkap' : '● Konfigurasi belum lengkap' }}
+                    </span>
+                  </div>
+                  <button @click="testSumopodConnection" :disabled="testingSumopod" class="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition disabled:opacity-50">
+                    {{ testingSumopod ? 'Testing...' : 'Test Koneksi' }}
+                  </button>
+                </div>
+                <p v-if="sumopodMissingFields.length" class="text-xs text-red-600 mt-1">Missing: {{ sumopodMissingFields.join(', ') }}</p>
+                <p v-if="sumopodTestResult" class="text-xs mt-1" :class="sumopodTestResult.success ? 'text-green-600' : 'text-red-600'">{{ sumopodTestResult.message }}</p>
+              </div>
               </div>
             </div>
           </div>

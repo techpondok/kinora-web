@@ -79,12 +79,17 @@ module.exports = async function handler(req, res) {
   const env = settings.sumopod_sandbox ? 'sandbox' : 'production'
   const config = getConfig(env, settings)
 
-  // Validate production credentials
-  if (env === 'production' && (!config.apiUrl || !config.apiKey)) {
-    return res.status(500).json({ success: false, message: 'Production Sumopod credentials not configured' })
-  }
+  // Validate credentials
   if (!config.apiUrl || !config.apiKey) {
-    return res.status(500).json({ success: false, message: 'Sumopod credentials not configured' })
+    return res.status(500).json({
+      success: false,
+      message: 'Konfigurasi SumoPod belum lengkap. Lengkapi API URL dan API Key di Payment Gateway Settings.',
+      missing: [
+        ...(!config.apiUrl ? ['API URL'] : []),
+        ...(!config.apiKey ? ['API Key'] : []),
+        ...(!config.merchantId ? ['Merchant ID'] : []),
+      ],
+    })
   }
 
   // ─── 5. IDEMPOTENCY CHECK ───
@@ -286,13 +291,15 @@ module.exports = async function handler(req, res) {
 function getConfig(env, settings) {
   if (env === 'sandbox') {
     return {
-      apiUrl: process.env.SUMOPOD_SANDBOX_API_URL || settings.sumopod_sandbox_api_url || '',
-      apiKey: process.env.SUMOPOD_SANDBOX_API_KEY || settings.sumopod_sandbox_api_key || '',
+      apiUrl: settings.sumopod_sandbox_api_url || process.env.SUMOPOD_SANDBOX_API_URL || '',
+      apiKey: settings.sumopod_sandbox_api_key || process.env.SUMOPOD_SANDBOX_API_KEY || '',
+      merchantId: settings.sumopod_sandbox_merchant_id || process.env.SUMOPOD_SANDBOX_MERCHANT_ID || '',
     }
   }
   return {
-    apiUrl: process.env.SUMOPOD_PRODUCTION_API_URL || settings.sumopod_production_api_url || '',
-    apiKey: process.env.SUMOPOD_PRODUCTION_API_KEY || settings.sumopod_production_api_key || '',
+    apiUrl: settings.sumopod_production_api_url || process.env.SUMOPOD_PRODUCTION_API_URL || '',
+    apiKey: settings.sumopod_production_api_key || process.env.SUMOPOD_PRODUCTION_API_KEY || '',
+    merchantId: settings.sumopod_production_merchant_id || process.env.SUMOPOD_PRODUCTION_MERCHANT_ID || '',
   }
 }
 
