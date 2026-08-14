@@ -32,7 +32,7 @@
             </div>
             <div class="flex gap-2 flex-shrink-0">
               <button @click="viewRegistrations(w)" class="text-xs text-purple-600 hover:underline">Peserta</button>
-              <button @click="editingWebinar = {...w}; showEditor = true" class="text-xs text-blue-600 hover:underline">Edit</button>
+              <button @click="editingWebinar = prepareForEdit(w); showEditor = true" class="text-xs text-blue-600 hover:underline">Edit</button>
               <button @click="togglePublish(w)" class="text-xs" :class="w.is_published ? 'text-orange-600' : 'text-green-600'">{{ w.is_published ? 'Unpublish' : 'Publish' }}</button>
               <button @click="confirmDelete(w)" class="text-xs text-red-600 hover:underline">Hapus</button>
             </div>
@@ -87,8 +87,30 @@
           <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingWebinar.is_free" class="rounded" /> Gratis</label>
           <div v-if="!editingWebinar.is_free">
             <label class="block text-xs text-gray-500 mb-1">Harga (IDR)</label>
-            <input v-model.number="editingWebinar.price_amount" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+            <input v-model.number="editingWebinar.price_amount" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
           </div>
+        </div>
+
+        <!-- Payment Configuration (paid only) -->
+        <div v-if="!editingWebinar.is_free" class="border-t border-gray-100 pt-4 space-y-3">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase">Pembayaran</h4>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Payment Gateway</label>
+              <select v-model="editingWebinar.payment_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                <option value="sumopod">SumoPod</option>
+                <option value="manual">Transfer Manual</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Biaya Aplikasi (IDR)</label>
+              <input v-model.number="editingWebinar.application_fee" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="0" />
+            </div>
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" v-model="editingWebinar.allow_manual_payment" class="rounded" />
+            Izinkan Transfer Manual (fallback)
+          </label>
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">Poster / Pamflet Webinar</label>
@@ -154,7 +176,7 @@
         <div class="flex justify-end gap-3 pt-2">
           <button @click="showEditor = false; editorError = ''" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Batal</button>
           <button @click="saveWebinar" :disabled="savingWebinar" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-            {{ savingWebinar ? 'Menyimpan...' : 'Simpan' }}
+            {{ savingWebinar ? 'Menyimpan...' : (editingWebinar.id ? 'Simpan Perubahan' : 'Simpan') }}
           </button>
         </div>
       </div>
@@ -264,6 +286,28 @@ function formatDate(d) {
   return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+/** Convert ISO/DB timestamp to datetime-local format (YYYY-MM-DDTHH:MM) */
+function toDatetimeLocal(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return ''
+  const pad = n => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/** Prepare webinar for editing — convert timestamps for datetime-local inputs */
+function prepareForEdit(webinar) {
+  return {
+    ...webinar,
+    scheduled_at: toDatetimeLocal(webinar.scheduled_at),
+    end_at: toDatetimeLocal(webinar.end_at),
+    registration_deadline: toDatetimeLocal(webinar.registration_deadline),
+    payment_method: webinar.payment_method || 'sumopod',
+    application_fee: webinar.application_fee || 0,
+    allow_manual_payment: webinar.allow_manual_payment || false,
+  }
+}
+
 async function loadWebinars() {
   loading.value = true
   const { data } = await supabase.from('kinora_webinars').select('*').order('scheduled_at', { ascending: false })
@@ -274,38 +318,78 @@ async function loadWebinars() {
 async function saveWebinar() {
   editorError.value = ''
   if (!editingWebinar.value.title) { editorError.value = 'Judul wajib diisi'; return }
-  if (!editingWebinar.value.meeting_url) { editorError.value = 'Meeting URL wajib diisi'; return }
   if (!editingWebinar.value.scheduled_at) { editorError.value = 'Jadwal wajib diisi'; return }
+
+  // Validate end_at > scheduled_at
+  if (editingWebinar.value.end_at && editingWebinar.value.scheduled_at) {
+    if (new Date(editingWebinar.value.end_at) <= new Date(editingWebinar.value.scheduled_at)) {
+      editorError.value = 'Waktu selesai harus setelah waktu mulai.'
+      return
+    }
+  }
 
   savingWebinar.value = true
 
-  const payload = { ...editingWebinar.value }
-  if (!payload.meeting_platform) payload.meeting_platform = 'zoom'
-  if (payload.is_free === undefined) payload.is_free = true
-  if (payload.is_free) payload.price_amount = 0
+  // Build payload with only the columns that exist in the database
+  const form = editingWebinar.value
+  const payload = {
+    title: form.title,
+    description: form.description || null,
+    speaker_name: form.speaker_name || null,
+    meeting_platform: form.meeting_platform || 'zoom',
+    meeting_url: form.meeting_url || null,
+    scheduled_at: form.scheduled_at || null,
+    end_at: form.end_at || null,
+    is_free: form.is_free ?? true,
+    price_amount: form.is_free ? 0 : (Number(form.price_amount) || 0),
+    cover_url: form.cover_url || null,
+    payment_instructions: form.payment_instructions || null,
+    payment_method: form.payment_method || 'sumopod',
+    application_fee: Number(form.application_fee) || 0,
+    allow_manual_payment: form.allow_manual_payment || false,
+    registration_mode: form.registration_mode || 'open',
+    max_participants: Number(form.max_participants) || null,
+    registration_deadline: form.registration_deadline || null,
+    link_visible_before_minutes: Number(form.link_visible_before_minutes) || 60,
+    allow_waiting_list: form.allow_waiting_list || false,
+    slug: form.slug || null,
+  }
 
-  // Convert empty strings to null for timestamp fields
-  if (!payload.scheduled_at) payload.scheduled_at = null
-  if (!payload.end_at) payload.end_at = null
-
-  // Get current user for created_by
-  if (!payload.id) {
-    const { data: { user } } = await supabase.auth.getUser()
-    payload.created_by = user?.id
+  if (import.meta.env.VITE_APP_ENV === 'development') {
+    console.log('[WEBINAR_EDIT][SUBMIT]', { webinarId: form.id || '(new)', payload })
   }
 
   let result
-  if (payload.id) {
-    const { id, created_at, ...rest } = payload
-    result = await supabase.from('kinora_webinars').update(rest).eq('id', id)
+  if (form.id) {
+    // UPDATE existing
+    result = await supabase
+      .from('kinora_webinars')
+      .update(payload)
+      .eq('id', form.id)
+      .select()
+      .single()
   } else {
-    result = await supabase.from('kinora_webinars').insert(payload)
+    // INSERT new
+    const { data: { user } } = await supabase.auth.getUser()
+    payload.created_by = user?.id
+    result = await supabase
+      .from('kinora_webinars')
+      .insert(payload)
+      .select()
+      .single()
   }
 
   if (result.error) {
-    editorError.value = result.error.message
+    editorError.value = 'Gagal memperbarui webinar: ' + result.error.message
+    if (import.meta.env.VITE_APP_ENV === 'development') {
+      console.error('[WEBINAR_EDIT][ERROR]', { status: result.error.code, message: result.error.message })
+    }
   } else {
+    if (import.meta.env.VITE_APP_ENV === 'development') {
+      console.log('[WEBINAR_EDIT][SUCCESS]', { webinarId: result.data?.id, updated: result.data })
+    }
     showEditor.value = false
+    editorError.value = ''
     loadWebinars()
   }
   savingWebinar.value = false

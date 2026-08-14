@@ -341,7 +341,7 @@ CREATE TABLE IF NOT EXISTS kinora_marketplace_orders (
 CREATE INDEX IF NOT EXISTS idx_families_owner ON kinora_families(owner_id);
 CREATE INDEX IF NOT EXISTS idx_family_members_family ON kinora_family_members(family_id);
 CREATE INDEX IF NOT EXISTS idx_family_members_user ON kinora_family_members(user_id);
-CREATE INDEX IF NOT EXISTS idx_comments_article ON kinora_comments(article_id);
+CREATE INDEX IF NOT EXISTS idx_comments_article ON kinora_comments(content_id);
 CREATE INDEX IF NOT EXISTS idx_comments_user ON kinora_comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON kinora_bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON kinora_notifications(user_id);
