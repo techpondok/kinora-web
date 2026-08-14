@@ -821,8 +821,7 @@
               <div class="border-t border-purple-200 pt-3 mt-3">
                 <p class="text-xs font-medium text-purple-800 mb-2">Sandbox Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
-                  <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_sandbox_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://sandbox.sumopod.com/api" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Merchant ID</label><input v-model="paymentSettings.sumopod_sandbox_merchant_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Merchant ID dari dashboard SumoPod" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_sandbox_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api-pay-sandbox.sumopod.com/api/v1/payments" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_sandbox_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_sandbox_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_sandbox_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
@@ -834,7 +833,6 @@
                 <p class="text-xs font-medium text-purple-800 mb-2">Production Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
                   <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_production_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api.sumopod.com/v1" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Merchant ID</label><input v-model="paymentSettings.sumopod_production_merchant_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Merchant ID dari dashboard SumoPod" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_production_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_production_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
                   <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_production_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
@@ -995,11 +993,9 @@ const sumopodMissingFields = computed(() => {
   const missing = []
   if (ps.sumopod_sandbox) {
     if (!ps.sumopod_sandbox_api_url) missing.push('Sandbox API URL')
-    if (!ps.sumopod_sandbox_merchant_id) missing.push('Sandbox Merchant ID')
     if (!ps.sumopod_sandbox_api_key) missing.push('Sandbox API Key')
   } else {
     if (!ps.sumopod_production_api_url) missing.push('Production API URL')
-    if (!ps.sumopod_production_merchant_id) missing.push('Production Merchant ID')
     if (!ps.sumopod_production_api_key) missing.push('Production API Key')
   }
   return missing

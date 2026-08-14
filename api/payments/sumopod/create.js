@@ -83,11 +83,10 @@ module.exports = async function handler(req, res) {
   if (!config.apiUrl || !config.apiKey) {
     return res.status(500).json({
       success: false,
-      message: 'Konfigurasi SumoPod belum lengkap. Lengkapi API URL dan API Key di Payment Gateway Settings.',
+      message: 'Konfigurasi SumoPod belum lengkap.',
       missing: [
         ...(!config.apiUrl ? ['API URL'] : []),
         ...(!config.apiKey ? ['API Key'] : []),
-        ...(!config.merchantId ? ['Merchant ID'] : []),
       ],
     })
   }
@@ -196,7 +195,6 @@ module.exports = async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'X-Api-Key': config.apiKey,
-        ...(config.merchantId ? { 'X-Merchant-Id': config.merchantId } : {}),
       },
       body: JSON.stringify(sumopodPayload),
     })
@@ -294,13 +292,11 @@ function getConfig(env, settings) {
     return {
       apiUrl: settings.sumopod_sandbox_api_url || process.env.SUMOPOD_SANDBOX_API_URL || '',
       apiKey: settings.sumopod_sandbox_api_key || process.env.SUMOPOD_SANDBOX_API_KEY || '',
-      merchantId: settings.sumopod_sandbox_merchant_id || process.env.SUMOPOD_SANDBOX_MERCHANT_ID || '',
     }
   }
   return {
     apiUrl: settings.sumopod_production_api_url || process.env.SUMOPOD_PRODUCTION_API_URL || '',
     apiKey: settings.sumopod_production_api_key || process.env.SUMOPOD_PRODUCTION_API_KEY || '',
-    merchantId: settings.sumopod_production_merchant_id || process.env.SUMOPOD_PRODUCTION_MERCHANT_ID || '',
   }
 }
 
