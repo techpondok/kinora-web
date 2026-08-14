@@ -53,7 +53,13 @@ module.exports = async function handler(req, res) {
     }
 
     if (!timingSafeCompare(incomingToken, config.webhookToken.trim())) {
-      log.warn('invalid_webhook_token')
+      log.warn('invalid_webhook_token', {
+        received_length: incomingToken.length,
+        expected_length: config.webhookToken.trim().length,
+        received_prefix: incomingToken.substring(0, 10),
+        expected_prefix: config.webhookToken.trim().substring(0, 10),
+        env: callbackEnv,
+      })
       return res.status(401).json({ success: false, error: 'invalid_webhook_token' })
     }
 
@@ -272,40 +278,49 @@ function detectEnvironment(req) {
  * Load config from env vars first, DB fallback.
  */
 async function loadConfig(env, supabase) {
-  // Try env vars first
-  const envConfig = getConfigFromEnv(env)
-  if (envConfig.webhookToken || envConfig.webhookSecret) {
-    return envConfig
-  }
-
-  // DB fallback
+  // Load from DB first (Web Admin is source of truth)
   try {
     const { data } = await supabase
       .from('kinora_payment_settings')
       .select('*')
       .eq('id', 1)
-      .maybeSingle() // Use maybeSingle — never throws if missing
+      .maybeSingle()
 
-    if (!data) return { webhookSecret: '', webhookToken: '', apiUrl: '', apiKey: '' }
-
-    if (env === 'sandbox') {
+    if (data) {
+      if (env === 'sandbox') {
+        const dbConfig = {
+          apiUrl: data.sumopod_sandbox_api_url || '',
+          apiKey: data.sumopod_sandbox_api_key || '',
+          webhookSecret: data.sumopod_sandbox_webhook_secret || '',
+          webhookToken: data.sumopod_sandbox_webhook_token || '',
+        }
+        // Use DB values if present, env var fallback
+        return {
+          apiUrl: dbConfig.apiUrl || process.env.SUMOPOD_SANDBOX_API_URL || '',
+          apiKey: dbConfig.apiKey || process.env.SUMOPOD_SANDBOX_API_KEY || '',
+          webhookSecret: dbConfig.webhookSecret || process.env.SUMOPOD_SANDBOX_WEBHOOK_SECRET || '',
+          webhookToken: dbConfig.webhookToken || process.env.SUMOPOD_SANDBOX_WEBHOOK_TOKEN || '',
+        }
+      }
+      const dbConfig = {
+        apiUrl: data.sumopod_production_api_url || '',
+        apiKey: data.sumopod_production_api_key || '',
+        webhookSecret: data.sumopod_production_webhook_secret || '',
+        webhookToken: data.sumopod_production_webhook_token || '',
+      }
       return {
-        apiUrl: data.sumopod_sandbox_api_url || '',
-        apiKey: data.sumopod_sandbox_api_key || '',
-        webhookSecret: data.sumopod_sandbox_webhook_secret || '',
-        webhookToken: data.sumopod_sandbox_webhook_token || '',
+        apiUrl: dbConfig.apiUrl || process.env.SUMOPOD_PRODUCTION_API_URL || '',
+        apiKey: dbConfig.apiKey || process.env.SUMOPOD_PRODUCTION_API_KEY || '',
+        webhookSecret: dbConfig.webhookSecret || process.env.SUMOPOD_PRODUCTION_WEBHOOK_SECRET || '',
+        webhookToken: dbConfig.webhookToken || process.env.SUMOPOD_PRODUCTION_WEBHOOK_TOKEN || '',
       }
     }
-    return {
-      apiUrl: data.sumopod_production_api_url || '',
-      apiKey: data.sumopod_production_api_key || '',
-      webhookSecret: data.sumopod_production_webhook_secret || '',
-      webhookToken: data.sumopod_production_webhook_token || '',
-    }
   } catch (e) {
-    // DB might be unreachable — return env-only config
-    return envConfig
+    // DB unreachable — fall through to env vars
   }
+
+  // Env var fallback
+  return getConfigFromEnv(env)
 }
 
 function getConfigFromEnv(env) {
