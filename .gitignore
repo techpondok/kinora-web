@@ -1,5 +1,21 @@
 node_modules
 dist
 .vercel
-.env
+
+# Environment files with credentials
 .env.local
+.env.*.local
+.env.seed
+
+# Server (legacy local backend — no longer primary)
+server/.env
+server/node_modules/
+server/uploads/
+
+# Supabase CLI temp
+supabase/.temp/
+supabase/schema_dump.sql
+
+# OS
+.DS_Store
+Thumbs.db

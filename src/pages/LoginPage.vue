@@ -60,6 +60,26 @@
           <a href="/register" class="text-blue-600 hover:underline">Buat akun baru</a>
         </div>
 
+        <!-- Dev Login Helper (development only) -->
+        <div v-if="isDev" class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+          <p class="text-xs font-semibold text-yellow-800 mb-2">Development Accounts (Supabase DEV)</p>
+          <div class="flex flex-wrap gap-2">
+            <button @click="devLogin('founder@kinora.local')" type="button"
+              class="px-3 py-1.5 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 rounded-lg transition font-medium">
+              Founder
+            </button>
+            <button @click="devLogin('parent@kinora.local')" type="button"
+              class="px-3 py-1.5 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 rounded-lg transition font-medium">
+              Parent
+            </button>
+            <button @click="devLogin('child@kinora.local')" type="button"
+              class="px-3 py-1.5 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 rounded-lg transition font-medium">
+              Child
+            </button>
+          </div>
+          <p class="text-[10px] text-yellow-600 mt-2">Password: Kinora123! · Run <code>npm run seed:dev</code></p>
+        </div>
+
         <!-- Divider -->
         <div class="mt-8 pt-6 border-t border-gray-100 text-center">
           <p class="text-xs text-gray-400">Platform keluarga digital</p>
@@ -81,6 +101,15 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 const appLogo = ref('')
+
+// Dev mode detection
+const isDev = import.meta.env.VITE_APP_ENV === 'development'
+
+function devLogin(devEmail) {
+  email.value = devEmail
+  password.value = 'Kinora123!'
+  handleLogin()
+}
 
 // --- Progressive Delay ---
 const DELAY_STEPS = [30, 300, 900, 3600] // 30s, 5min, 15min, 1hr

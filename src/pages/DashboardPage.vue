@@ -345,9 +345,19 @@
           <ProductsPage />
         </div>
 
+        <!-- Edu Games -->
+        <div v-if="activeMenu === 'edu_games'">
+          <EduGamesPage />
+        </div>
+
         <!-- Promo Codes -->
         <div v-if="activeMenu === 'promo'">
           <PromoCodesPage />
+        </div>
+
+        <!-- Banners -->
+        <div v-if="activeMenu === 'banners'">
+          <BannersPage />
         </div>
 
         <!-- Google Services -->
@@ -468,11 +478,13 @@ import AdminTicketsPage from './AdminTicketsPage.vue'
 import BroadcastPage from './BroadcastPage.vue'
 import FeatureTogglesPage from './FeatureTogglesPage.vue'
 import ProductsPage from './ProductsPage.vue'
+import EduGamesPage from './EduGamesPage.vue'
 import GoogleServicesPage from './GoogleServicesPage.vue'
 import StorageManagementPage from './StorageManagementPage.vue'
 import EnvironmentPage from './EnvironmentPage.vue'
 import ProductionDeploymentPage from './ProductionDeploymentPage.vue'
 import PromoCodesPage from './PromoCodesPage.vue'
+import BannersPage from './BannersPage.vue'
 
 const router = useRouter()
 const PAGE_SIZE = 10
@@ -545,7 +557,9 @@ const menuItems = [
   { id: 'about_cms', label: 'About Kinora', icon: Info },
   { id: 'features', label: 'Feature Toggle', icon: ToggleLeft },
   { id: 'products', label: 'Produk', icon: ShoppingBag },
+  { id: 'edu_games', label: 'Edu Games', icon: LayoutDashboard },
   { id: 'promo', label: 'Promo Codes', icon: Tag },
+  { id: 'banners', label: 'Banners', icon: ExternalLink },
   { id: 'google', label: 'Google Services', icon: Search },
   { id: 'storage', label: 'Storage', icon: Code },
   { id: 'environment', label: 'Environment', icon: Server },

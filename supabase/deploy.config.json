@@ -1,6 +1,22 @@
 {
-  "version": "1.0.0",
-  "description": "Kinora Production Deployment Configuration",
+  "version": "2.0.0",
+  "description": "Kinora Dual-Environment Deployment Configuration",
+
+  "environments": {
+    "development": {
+      "project_ref": "YOUR_DEV_PROJECT_REF",
+      "description": "Supabase Development — test data, sandbox payments",
+      "payment_env": "sandbox",
+      "fcm_env": "dev"
+    },
+    "production": {
+      "project_ref": "sasigbuckngggpwpxlhz",
+      "description": "Supabase Production — real users, live payments",
+      "payment_env": "production",
+      "fcm_env": "prod"
+    }
+  },
+
   "deployment_order": [
     "database_migrations",
     "rls_policies",
@@ -9,6 +25,7 @@
     "storage_policies",
     "post_deployment_verification"
   ],
+
   "edge_functions": [
     {
       "name": "sumopod-webhook",
@@ -20,7 +37,6 @@
         "SUMOPOD_WEBHOOK_SECRET",
         "SUMOPOD_WEBHOOK_TOKEN"
       ],
-      "depends_on_migrations": [],
       "category": "payment"
     },
     {
@@ -32,7 +48,6 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "TRIPAY_PRIVATE_KEY"
       ],
-      "depends_on_migrations": [],
       "category": "payment"
     },
     {
@@ -45,7 +60,6 @@
         "SUMOPOD_API_KEY",
         "SUMOPOD_API_URL"
       ],
-      "depends_on_migrations": ["fix_payment_method_constraint"],
       "category": "payment"
     },
     {
@@ -57,7 +71,6 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "GOOGLE_PLAY_SERVICE_ACCOUNT_KEY"
       ],
-      "depends_on_migrations": [],
       "category": "subscription"
     },
     {
@@ -69,27 +82,28 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "FCM_SERVER_KEY"
       ],
-      "depends_on_migrations": [],
       "category": "notification"
     }
   ],
-  "required_secrets": {
-    "all_environments": [
-      "SUPABASE_URL",
-      "SUPABASE_SERVICE_ROLE_KEY"
-    ],
-    "payment": [
-      "SUMOPOD_API_KEY",
-      "SUMOPOD_API_URL",
-      "SUMOPOD_WEBHOOK_SECRET",
-      "SUMOPOD_WEBHOOK_TOKEN",
-      "TRIPAY_PRIVATE_KEY"
-    ],
-    "subscription": [
-      "GOOGLE_PLAY_SERVICE_ACCOUNT_KEY"
-    ],
-    "notification": [
-      "FCM_SERVER_KEY"
-    ]
+
+  "secrets_per_environment": {
+    "development": {
+      "PAYMENT_ENV": "sandbox",
+      "SUMOPOD_API_URL": "https://sandbox.sumopod.com",
+      "notes": "Use sandbox/test keys for all payment and notification secrets"
+    },
+    "production": {
+      "PAYMENT_ENV": "production",
+      "SUMOPOD_API_URL": "https://api.sumopod.com",
+      "notes": "Use live keys. Double-check before updating."
+    }
+  },
+
+  "workflow": {
+    "1_create": "Create migration SQL in supabase/migrations/",
+    "2_deploy_dev": "npm run deploy:dev (or scripts/deploy-dev.bat)",
+    "3_test": "Test with Admin Web Dev + Flutter Dev",
+    "4_deploy_prod": "npm run deploy:prod (or scripts/deploy-production.bat)",
+    "5_verify": "Verify in production dashboard"
   }
 }
