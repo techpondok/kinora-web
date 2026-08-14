@@ -125,6 +125,24 @@ const routes = [
     props: { type: 'article' },
   },
   {
+    path: '/author/:slug',
+    name: 'AuthorProfile',
+    component: () => import('../pages/AuthorPage.vue'),
+    props: true,
+  },
+  {
+    path: '/editorial-policy',
+    name: 'EditorialPolicy',
+    component: () => import('../pages/StaticPage.vue'),
+    props: { pageKey: 'editorial-policy' },
+  },
+  {
+    path: '/corrections-policy',
+    name: 'CorrectionsPolicy',
+    component: () => import('../pages/StaticPage.vue'),
+    props: { pageKey: 'corrections-policy' },
+  },
+  {
     path: '/news',
     name: 'News',
     component: () => import('../pages/ArticlesPage.vue'),

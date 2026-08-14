@@ -74,6 +74,55 @@
           Sumber: <a :href="article.source_url" target="_blank" rel="noopener" class="text-blue-600 hover:underline">{{ article.source_name }}</a>
         </div>
 
+        <!-- Disclaimer -->
+        <div v-if="article.disclaimer" class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+          {{ article.disclaimer }}
+        </div>
+
+        <!-- FAQ Section -->
+        <div v-if="article.faq?.length" class="mt-10 border-t border-gray-100 pt-8">
+          <h2 class="text-lg font-bold text-gray-900 mb-4">Pertanyaan Umum (FAQ)</h2>
+          <div class="space-y-4">
+            <details v-for="(f, i) in article.faq" :key="i" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <summary class="px-4 py-3 cursor-pointer text-sm font-medium text-gray-900 hover:bg-gray-50">{{ f.question }}</summary>
+              <div class="px-4 pb-3 text-sm text-gray-600 leading-relaxed">{{ f.answer }}</div>
+            </details>
+          </div>
+        </div>
+
+        <!-- References -->
+        <div v-if="article.references?.length" class="mt-8 border-t border-gray-100 pt-6">
+          <h3 class="text-sm font-bold text-gray-900 mb-3">Sumber dan Referensi</h3>
+          <ol class="list-decimal list-inside space-y-1 text-sm text-gray-600">
+            <li v-for="(ref, i) in article.references" :key="i">
+              <a v-if="ref.url" :href="ref.url" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ ref.title || ref.url }}</a>
+              <span v-else>{{ ref.title }}</span>
+              <span v-if="ref.publisher" class="text-gray-400"> — {{ ref.publisher }}</span>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Author Bio Footer -->
+        <div v-if="article.author_name" class="mt-8 border-t border-gray-100 pt-6">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-100 flex-shrink-0 flex items-center justify-center text-amber-700 font-bold text-sm">{{ (article.author_name || 'K')[0] }}</div>
+            <div>
+              <p class="text-sm font-medium text-gray-900">Ditulis oleh {{ article.author_name }}</p>
+              <p v-if="article.author_bio" class="text-xs text-gray-500 mt-0.5">{{ article.author_bio }}</p>
+              <a v-if="article.author_slug" :href="`/author/${article.author_slug}`" class="text-xs text-blue-600 hover:underline mt-1 inline-block">Lihat Profil Penulis →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reviewer -->
+        <div v-if="article.reviewer_name" class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <p class="text-xs text-green-800">
+            <span class="font-medium">Ditinjau oleh {{ article.reviewer_name }}</span>
+            <span v-if="article.reviewer_title"> · {{ article.reviewer_title }}</span>
+            <span v-if="article.reviewed_at"> · {{ formatDate(article.reviewed_at) }}</span>
+          </p>
+        </div>
+
         <!-- Tags -->
         <div v-if="article.tags?.length" class="mt-6 flex flex-wrap gap-2">
           <a v-for="tag in article.tags" :key="tag" :href="`/tag/${tag}`" class="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full hover:bg-gray-200">
@@ -178,18 +227,51 @@ function getAdSlot(placement) {
 
 const jsonLd = computed(() => {
   if (!article.value) return ''
-  const schema = {
+  const a = article.value
+  const articleUrl = `https://kinorafamilies.com/${isNews.value ? 'news' : 'articles'}/${a.slug}`
+
+  // Article schema
+  const articleSchema = {
     '@context': 'https://schema.org',
     '@type': isNews.value ? 'NewsArticle' : 'Article',
-    headline: article.value.seo_title || article.value.title,
-    description: article.value.meta_description || article.value.summary,
-    image: article.value.og_image || article.value.cover_url,
-    author: { '@type': 'Person', name: article.value.author_name || 'Kinora' },
-    datePublished: article.value.published_at,
-    dateModified: article.value.updated_at,
-    publisher: { '@type': 'Organization', name: 'Kinora', url: 'https://kinorafamilies.com' },
+    headline: a.seo_title || a.title,
+    description: a.meta_description || a.summary,
+    image: a.og_image || a.cover_url,
+    author: { '@type': 'Person', name: a.author_name || 'Kinora', url: a.author_id ? `https://kinorafamilies.com/author/${a.author_slug || ''}` : undefined },
+    datePublished: a.published_at,
+    dateModified: a.updated_at || a.published_at,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl },
+    publisher: { '@type': 'Organization', name: 'Kinora', url: 'https://kinorafamilies.com', logo: { '@type': 'ImageObject', url: 'https://kinorafamilies.com/logo.png' } },
   }
-  return JSON.stringify(schema)
+
+  // BreadcrumbList schema
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Kinora', item: 'https://kinorafamilies.com' },
+      { '@type': 'ListItem', position: 2, name: isNews.value ? 'Berita' : 'Artikel', item: `https://kinorafamilies.com/${isNews.value ? 'news' : 'articles'}` },
+      { '@type': 'ListItem', position: 3, name: a.title, item: articleUrl },
+    ],
+  }
+
+  const schemas = [articleSchema, breadcrumbSchema]
+
+  // FAQ schema (if FAQ exists)
+  if (a.faq && Array.isArray(a.faq) && a.faq.length > 0) {
+    const faqSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: a.faq.map(f => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: { '@type': 'Answer', text: f.answer },
+      })),
+    }
+    schemas.push(faqSchema)
+  }
+
+  return JSON.stringify(schemas)
 })
 
 function formatDate(d) {
