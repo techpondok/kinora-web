@@ -196,6 +196,7 @@ module.exports = async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'X-Api-Key': config.apiKey,
+        ...(config.merchantId ? { 'X-Merchant-Id': config.merchantId } : {}),
       },
       body: JSON.stringify(sumopodPayload),
     })

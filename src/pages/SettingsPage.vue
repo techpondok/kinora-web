@@ -862,7 +862,6 @@
                 <p v-if="sumopodMissingFields.length" class="text-xs text-red-600 mt-1">Missing: {{ sumopodMissingFields.join(', ') }}</p>
                 <p v-if="sumopodTestResult" class="text-xs mt-1" :class="sumopodTestResult.success ? 'text-green-600' : 'text-red-600'">{{ sumopodTestResult.message }}</p>
               </div>
-              </div>
             </div>
           </div>
 
@@ -987,6 +986,58 @@ const settingsMap = ref({})
 const data = ref({})
 const originalData = ref({})
 const paymentSettings = ref({})
+const testingSumopod = ref(false)
+const sumopodTestResult = ref(null)
+
+// SumoPod configuration completeness check
+const sumopodMissingFields = computed(() => {
+  const ps = paymentSettings.value
+  const missing = []
+  if (ps.sumopod_sandbox) {
+    if (!ps.sumopod_sandbox_api_url) missing.push('Sandbox API URL')
+    if (!ps.sumopod_sandbox_merchant_id) missing.push('Sandbox Merchant ID')
+    if (!ps.sumopod_sandbox_api_key) missing.push('Sandbox API Key')
+  } else {
+    if (!ps.sumopod_production_api_url) missing.push('Production API URL')
+    if (!ps.sumopod_production_merchant_id) missing.push('Production Merchant ID')
+    if (!ps.sumopod_production_api_key) missing.push('Production API Key')
+  }
+  return missing
+})
+
+const sumopodConfigComplete = computed(() => sumopodMissingFields.value.length === 0)
+
+async function testSumopodConnection() {
+  testingSumopod.value = true
+  sumopodTestResult.value = null
+  try {
+    const { data, error } = await supabase.rpc('test_sumopod_connection')
+    if (error) {
+      // Fallback: test via a lightweight fetch to the API URL
+      const ps = paymentSettings.value
+      const apiUrl = ps.sumopod_sandbox ? ps.sumopod_sandbox_api_url : ps.sumopod_production_api_url
+      if (!apiUrl) {
+        sumopodTestResult.value = { success: false, message: 'API URL belum dikonfigurasi.' }
+      } else {
+        try {
+          const res = await fetch(apiUrl.replace(/\/+$/, '') + '/api/v1/health', { method: 'GET', signal: AbortSignal.timeout(5000) })
+          sumopodTestResult.value = res.ok
+            ? { success: true, message: '✓ Koneksi ke SumoPod berhasil.' }
+            : { success: false, message: `Koneksi gagal: HTTP ${res.status}` }
+        } catch (e) {
+          sumopodTestResult.value = { success: false, message: `Koneksi gagal: ${e.message}` }
+        }
+      }
+    } else {
+      sumopodTestResult.value = data?.success
+        ? { success: true, message: '✓ Koneksi dan autentikasi berhasil.' }
+        : { success: false, message: data?.message || 'Test gagal.' }
+    }
+  } catch (e) {
+    sumopodTestResult.value = { success: false, message: e.message }
+  }
+  testingSumopod.value = false
+}
 
 // Primary gateway validation
 const primaryGatewayWarning = computed(() => {
