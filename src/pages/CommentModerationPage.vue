@@ -332,14 +332,25 @@ async function loadCounts() {
 }
 
 async function updateStatus(comment, newStatus) {
-  const { error } = await supabase
-    .from('kinora_comments')
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq('id', comment.id)
+  const { data, error } = await supabase.rpc('moderate_kinora_comment', {
+    p_comment_id: comment.id,
+    p_status: newStatus,
+    p_reason: null,
+  })
 
   if (error) {
     alert('Gagal update status: ' + error.message)
     return
+  }
+
+  if (envInfo.isDevelopment) {
+    console.log('[COMMENT_MODERATION]', {
+      commentId: comment.id,
+      oldStatus: comment.display_status,
+      newStatus,
+      rpc: 'moderate_kinora_comment',
+      result: data,
+    })
   }
 
   comment.status = newStatus
@@ -350,11 +361,11 @@ async function updateStatus(comment, newStatus) {
 async function removeComment(comment) {
   if (!confirm('Hapus komentar ini? (soft delete)')) return
 
-  // Soft delete
-  const { error } = await supabase
-    .from('kinora_comments')
-    .update({ status: 'deleted', body: '', updated_at: new Date().toISOString() })
-    .eq('id', comment.id)
+  const { error } = await supabase.rpc('moderate_kinora_comment', {
+    p_comment_id: comment.id,
+    p_status: 'deleted',
+    p_reason: null,
+  })
 
   if (error) {
     alert('Gagal hapus: ' + error.message)
