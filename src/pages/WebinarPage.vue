@@ -94,18 +94,27 @@
         <!-- Payment Configuration (paid only) -->
         <div v-if="!editingWebinar.is_free" class="border-t border-gray-100 pt-4 space-y-3">
           <h4 class="text-xs font-semibold text-gray-500 uppercase">Pembayaran</h4>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Payment Gateway</label>
-              <select v-model="editingWebinar.payment_method" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
-                <option value="sumopod">SumoPod</option>
-                <option value="manual">Transfer Manual</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Biaya Aplikasi (IDR)</label>
-              <input v-model.number="editingWebinar.application_fee" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="0" />
-            </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Payment Gateway</label>
+            <select v-model="editingWebinar.payment_method" class="w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+              <option value="sumopod">SumoPod</option>
+              <option value="manual">Transfer Manual</option>
+            </select>
+          </div>
+          <!-- Global App Fee (read-only preview) -->
+          <div class="p-3 bg-gray-50 border border-gray-100 rounded-lg space-y-1">
+            <p class="text-xs font-medium text-gray-600">Biaya Aplikasi</p>
+            <p class="text-xs text-gray-500">
+              <span v-if="globalWebinarFee.fixed">Rp{{ Number(globalWebinarFee.fixed).toLocaleString('id-ID') }} + </span>
+              <span v-if="globalWebinarFee.percent">{{ globalWebinarFee.percent }}%</span>
+              <span v-if="!globalWebinarFee.fixed && !globalWebinarFee.percent">Tidak ada biaya</span>
+              <span class="ml-2 text-gray-400">· Ditanggung {{ globalWebinarFee.bearer === 'customer' ? 'Customer' : 'Platform' }}</span>
+            </p>
+            <p v-if="editingWebinar.price_amount && (globalWebinarFee.fixed || globalWebinarFee.percent)" class="text-xs text-purple-700 font-medium">
+              Estimasi: Rp{{ calculatedWebinarFee.toLocaleString('id-ID') }} →
+              Total Customer: Rp{{ (Number(editingWebinar.price_amount) + (globalWebinarFee.bearer === 'customer' ? calculatedWebinarFee : 0)).toLocaleString('id-ID') }}
+            </p>
+            <p class="text-[10px] text-gray-400 mt-1">Pengaturan ini mengikuti App Fee global. <button @click="$emit('navigate', 'settings')" type="button" class="text-purple-600 hover:underline">Ubah Pengaturan Biaya →</button></p>
           </div>
           <label class="flex items-center gap-2 text-sm">
             <input type="checkbox" v-model="editingWebinar.allow_manual_payment" class="rounded" />
@@ -249,6 +258,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
 
+const emit = defineEmits(['navigate'])
+
 const webinars = ref([])
 const loading = ref(true)
 const showEditor = ref(false)
@@ -258,6 +269,31 @@ const editorError = ref('')
 const deletingWebinar = ref(null)
 const coverUploading = ref(false)
 const coverUploadError = ref('')
+
+// Global App Fee for Webinar (loaded from kinora_payment_settings)
+const globalWebinarFee = ref({ fixed: 0, percent: 0, bearer: 'customer' })
+
+const calculatedWebinarFee = computed(() => {
+  const price = Number(editingWebinar.value.price_amount) || 0
+  const fixed = Number(globalWebinarFee.value.fixed) || 0
+  const percent = Number(globalWebinarFee.value.percent) || 0
+  return Math.round(fixed + (price * percent / 100))
+})
+
+async function loadGlobalFee() {
+  const { data } = await supabase
+    .from('kinora_payment_settings')
+    .select('webinar_app_fee_fixed, webinar_app_fee_percent, webinar_fee_bearer')
+    .eq('id', 1)
+    .single()
+  if (data) {
+    globalWebinarFee.value = {
+      fixed: data.webinar_app_fee_fixed || 0,
+      percent: data.webinar_app_fee_percent || 0,
+      bearer: data.webinar_fee_bearer || 'customer',
+    }
+  }
+}
 
 async function handleCoverUpload(e) {
   const file = e.target.files?.[0]
@@ -303,7 +339,6 @@ function prepareForEdit(webinar) {
     end_at: toDatetimeLocal(webinar.end_at),
     registration_deadline: toDatetimeLocal(webinar.registration_deadline),
     payment_method: webinar.payment_method || 'sumopod',
-    application_fee: webinar.application_fee || 0,
     allow_manual_payment: webinar.allow_manual_payment || false,
   }
 }
@@ -345,7 +380,6 @@ async function saveWebinar() {
     cover_url: form.cover_url || null,
     payment_instructions: form.payment_instructions || null,
     payment_method: form.payment_method || 'sumopod',
-    application_fee: Number(form.application_fee) || 0,
     allow_manual_payment: form.allow_manual_payment || false,
     registration_mode: form.registration_mode || 'open',
     max_participants: Number(form.max_participants) || null,
@@ -546,5 +580,8 @@ async function promoteReg(r) {
   r.status = 'approved'
 }
 
-onMounted(loadWebinars)
+onMounted(() => {
+  loadWebinars()
+  loadGlobalFee()
+})
 </script>
