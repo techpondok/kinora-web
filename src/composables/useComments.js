@@ -130,10 +130,11 @@ export function useComments(contentId, contentType = 'article') {
         parent_id: parentId,
         user_id: user.id,
         body: sanitize(body),
+        status: 'published',
       })
       .select(`
         id, body, status, likes_count, replies_count, is_edited, created_at, parent_id,
-        user_id, users!inner(display_name, avatar_url)
+        user_id, user_name, users(display_name, avatar_url)
       `)
       .single()
 
@@ -141,8 +142,8 @@ export function useComments(contentId, contentType = 'article') {
 
     const comment = {
       ...data,
-      display_name: data.users?.display_name || 'Pengguna',
-      avatar_url: data.users?.avatar_url || null,
+      display_name: data.users?.display_name || data.user_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Pengguna',
+      avatar_url: data.users?.avatar_url || user.user_metadata?.avatar_url || null,
       replies: [],
       repliesLoaded: false,
     }
