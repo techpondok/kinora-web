@@ -17,12 +17,12 @@ export function useComments(contentId, contentType = 'article') {
     error.value = ''
 
     try {
-      // Fetch top-level comments with user profile
-      const { data, error: err, count } = await supabase
+      // Fetch top-level comments — LEFT join on user profile (not inner)
+      let query = supabase
         .from('kinora_comments')
         .select(`
           id, body, status, likes_count, replies_count, is_edited, created_at, parent_id,
-          user_id, users!inner(display_name, avatar_url)
+          user_id, user_name, users(display_name, avatar_url)
         `, { count: 'exact' })
         .eq('content_id', contentId)
         .eq('content_type', contentType)
@@ -31,11 +31,30 @@ export function useComments(contentId, contentType = 'article') {
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
 
-      if (err) throw err
+      let { data, error: err, count } = await query
+
+      // Fallback: if relationship fails, query without join
+      if (err) {
+        console.warn('[WEB_COMMENTS] Profile join failed, using fallback:', err.message)
+        const fallback = await supabase
+          .from('kinora_comments')
+          .select('id, body, status, likes_count, replies_count, is_edited, created_at, parent_id, user_id, user_name', { count: 'exact' })
+          .eq('content_id', contentId)
+          .eq('content_type', contentType)
+          .is('parent_id', null)
+          .in('status', ['published', 'deleted'])
+          .order('created_at', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1)
+
+        data = fallback.data
+        count = fallback.count
+        err = fallback.error
+        if (err) throw err
+      }
 
       const items = (data || []).map(c => ({
         ...c,
-        display_name: c.users?.display_name || 'Pengguna',
+        display_name: c.users?.display_name || c.user_name || 'Pengguna Kinora',
         avatar_url: c.users?.avatar_url || null,
         replies: [],
         repliesLoaded: false,
@@ -50,28 +69,45 @@ export function useComments(contentId, contentType = 'article') {
       totalCount.value = count || 0
       offset += items.length
       hasMore.value = items.length === PAGE_SIZE
+
+      if (import.meta.env.VITE_APP_ENV === 'development') {
+        console.log('[WEB_COMMENTS][LOAD]', { contentId, contentType, status: 'published', count, itemsLoaded: items.length })
+      }
     } catch (e) {
       error.value = e.message
+      console.error('[WEB_COMMENTS][ERROR]', e.message)
     } finally {
       loading.value = false
     }
   }
 
   async function loadReplies(commentId) {
-    const { data } = await supabase
+    let { data, error: err } = await supabase
       .from('kinora_comments')
       .select(`
         id, body, status, likes_count, is_edited, created_at, parent_id,
-        user_id, users!inner(display_name, avatar_url)
+        user_id, user_name, users(display_name, avatar_url)
       `)
       .eq('parent_id', commentId)
       .in('status', ['published', 'deleted'])
       .order('created_at', { ascending: true })
       .limit(50)
 
+    // Fallback without join
+    if (err) {
+      const fallback = await supabase
+        .from('kinora_comments')
+        .select('id, body, status, likes_count, is_edited, created_at, parent_id, user_id, user_name')
+        .eq('parent_id', commentId)
+        .in('status', ['published', 'deleted'])
+        .order('created_at', { ascending: true })
+        .limit(50)
+      data = fallback.data
+    }
+
     const replies = (data || []).map(c => ({
       ...c,
-      display_name: c.users?.display_name || 'Pengguna',
+      display_name: c.users?.display_name || c.user_name || 'Pengguna Kinora',
       avatar_url: c.users?.avatar_url || null,
     }))
 
