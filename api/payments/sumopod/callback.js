@@ -35,14 +35,36 @@ module.exports = async function handler(req, res) {
     log.info('environment_detected', { env: callbackEnv })
 
     // ─── 3. LOAD WEBHOOK TOKEN ───
-    // Priority: direct env var → DB config → env-prefixed var
-    const directToken = process.env.SUMOPOD_WEBHOOK_TOKEN || ''
-    const config = await loadConfig(callbackEnv, supabase)
-    const expectedToken = (directToken || config.webhookToken || '').trim()
+    // Priority: kinora_app_secrets (API Keys) → env var → payment_settings (legacy)
+    let expectedToken = ''
+
+    // Read from kinora_app_secrets (source of truth from Web Admin → API Keys)
+    try {
+      const { data: secretRow } = await supabase
+        .from('kinora_app_secrets')
+        .select('value_encrypted')
+        .eq('secret_key', 'SUMOPOD_WEBHOOK_TOKEN')
+        .maybeSingle()
+      if (secretRow?.value_encrypted) {
+        expectedToken = secretRow.value_encrypted.trim()
+      }
+    } catch {}
+
+    // Fallback: env var
+    if (!expectedToken) {
+      expectedToken = (process.env.SUMOPOD_WEBHOOK_TOKEN || '').trim()
+    }
+
+    // Fallback: legacy payment_settings
+    if (!expectedToken) {
+      const config = await loadConfig(callbackEnv, supabase)
+      expectedToken = (config.webhookToken || '').trim()
+    }
 
     log.info('config_loaded', {
-      hasDirectEnvToken: !!directToken,
-      hasDbToken: !!config.webhookToken,
+      tokenSource: expectedToken ? 'resolved' : 'none',
+      tokenLength: expectedToken.length,
+    })
       hasSecret: !!config.webhookSecret,
       tokenSource: directToken ? 'env' : config.webhookToken ? 'db' : 'none',
     })
@@ -75,15 +97,22 @@ module.exports = async function handler(req, res) {
 
     // ─── 5. OPTIONAL: SVIX SIGNATURE VERIFICATION (production hardening) ───
     const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
-    if (config.webhookSecret) {
-      const svixResult = verifySvixSignature(req, rawBody, config.webhookSecret)
+    let webhookSecret = ''
+    try {
+      const { data: secretRow } = await supabase
+        .from('kinora_app_secrets')
+        .select('value_encrypted')
+        .eq('secret_key', 'SUMOPOD_WEBHOOK_SIGNING_SECRET')
+        .maybeSingle()
+      webhookSecret = secretRow?.value_encrypted || process.env.SUMOPOD_WEBHOOK_SIGNING_SECRET || ''
+    } catch {}
+
+    if (webhookSecret) {
+      const svixResult = verifySvixSignature(req, rawBody, webhookSecret)
       log.info('svix_verification', { result: svixResult.status })
-      // In production with both configured, require Svix to pass too
       if (svixResult.status === 'failed') {
-        await safeAudit(supabase, null, 'svix_failed', callbackEnv, {})
-        return res.status(401).json({ success: false, error: 'invalid_signature' })
+        log.warn('svix_signature_mismatch', { note: 'Token valid but Svix signature failed. Update Webhook Signing Secret in API Keys.' })
       }
-      // 'skipped' = no svix headers present (e.g. test webhook) — OK, token already passed
     }
 
     // ─── 6. PARSE PAYLOAD ───

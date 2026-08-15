@@ -79,15 +79,31 @@ module.exports = async function handler(req, res) {
   const env = settings.sumopod_sandbox ? 'sandbox' : 'production'
   const config = getConfig(env, settings)
 
+  // Load API Key from kinora_app_secrets (API Keys page is source of truth)
+  let apiKey = ''
+  try {
+    const { data: secretRow } = await supabase
+      .from('kinora_app_secrets')
+      .select('value_encrypted')
+      .eq('secret_key', 'SUMOPOD_API_KEY')
+      .maybeSingle()
+    apiKey = secretRow?.value_encrypted || ''
+  } catch {}
+  // Fallback to env var
+  if (!apiKey) apiKey = process.env.SUMOPOD_API_KEY || process.env.SUMOPOD_SANDBOX_API_KEY || ''
+  config.apiKey = apiKey
+
   // Validate credentials
   if (!config.apiUrl || !config.apiKey) {
+    const missing = []
+    if (!config.apiUrl) missing.push('API URL (Payment Integration)')
+    if (!config.apiKey) missing.push('API Key (API Keys)')
     return res.status(500).json({
       success: false,
-      message: 'Konfigurasi SumoPod belum lengkap.',
-      missing: [
-        ...(!config.apiUrl ? ['API URL'] : []),
-        ...(!config.apiKey ? ['API Key'] : []),
-      ],
+      message: missing.includes('API Key (API Keys)')
+        ? 'SumoPod API Key belum dikonfigurasi. Atur di Admin → API Keys.'
+        : 'SumoPod API URL belum dikonfigurasi di Payment Integration.',
+      missing,
     })
   }
 
@@ -288,15 +304,17 @@ module.exports = async function handler(req, res) {
 // ═══════════════════════════════════════════
 
 function getConfig(env, settings) {
+  // API URLs come from payment_settings (Payment Integration)
+  // API Keys are loaded separately from kinora_app_secrets
   if (env === 'sandbox') {
     return {
-      apiUrl: settings.sumopod_sandbox_api_url || process.env.SUMOPOD_SANDBOX_API_URL || '',
-      apiKey: settings.sumopod_sandbox_api_key || process.env.SUMOPOD_SANDBOX_API_KEY || '',
+      apiUrl: settings.sumopod_sandbox_api_url || process.env.SUMOPOD_SANDBOX_API_URL || 'https://api-pay-sandbox.sumopod.com/api/v1/payments',
+      apiKey: null, // loaded separately from kinora_app_secrets
     }
   }
   return {
-    apiUrl: settings.sumopod_production_api_url || process.env.SUMOPOD_PRODUCTION_API_URL || '',
-    apiKey: settings.sumopod_production_api_key || process.env.SUMOPOD_PRODUCTION_API_KEY || '',
+    apiUrl: settings.sumopod_production_api_url || process.env.SUMOPOD_PRODUCTION_API_URL || 'https://api-pay.sumopod.com/api/v1/payments',
+    apiKey: null, // loaded separately from kinora_app_secrets
   }
 }
 

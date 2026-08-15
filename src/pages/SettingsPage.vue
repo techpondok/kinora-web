@@ -822,9 +822,7 @@
                 <p class="text-xs font-medium text-purple-800 mb-2">Sandbox Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
                   <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_sandbox_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api-pay-sandbox.sumopod.com/api/v1/payments" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_sandbox_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_sandbox_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_sandbox_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
+                  <p class="text-[10px] text-gray-400 px-1">API Key, Webhook Token, dan Webhook Signing Secret dikelola melalui <button type="button" @click="$emit('navigate', 'api')" class="text-blue-600 hover:underline">API Keys</button>.</p>
                 </div>
               </div>
 
@@ -832,10 +830,8 @@
               <div class="border-t border-purple-200 pt-3 mt-3">
                 <p class="text-xs font-medium text-purple-800 mb-2">Production Credentials</p>
                 <div class="grid grid-cols-1 gap-2">
-                  <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_production_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api.sumopod.com/v1" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">API Key</label><input v-model="paymentSettings.sumopod_production_api_key" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="API Key dari dashboard Sumopod" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Signing Secret</label><input v-model="paymentSettings.sumopod_production_webhook_secret" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Signing secret untuk verifikasi webhook" @input="markDirty" /></div>
-                  <div><label class="block text-xs text-gray-500 mb-1">Webhook Token</label><input v-model="paymentSettings.sumopod_production_webhook_token" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="Token dari header X-Webhook-Token" @input="markDirty" /></div>
+                  <div><label class="block text-xs text-gray-500 mb-1">API URL</label><input v-model="paymentSettings.sumopod_production_api_url" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none font-mono" placeholder="https://api-pay.sumopod.com/api/v1/payments" @input="markDirty" /></div>
+                  <p class="text-[10px] text-gray-400 px-1">API Key, Webhook Token, dan Webhook Signing Secret dikelola melalui <button type="button" @click="$emit('navigate', 'api')" class="text-blue-600 hover:underline">API Keys</button>.</p>
                 </div>
               </div>
 
@@ -993,10 +989,8 @@ const sumopodMissingFields = computed(() => {
   const missing = []
   if (ps.sumopod_sandbox) {
     if (!ps.sumopod_sandbox_api_url) missing.push('Sandbox API URL')
-    if (!ps.sumopod_sandbox_api_key) missing.push('Sandbox API Key')
   } else {
     if (!ps.sumopod_production_api_url) missing.push('Production API URL')
-    if (!ps.sumopod_production_api_key) missing.push('Production API Key')
   }
   return missing
 })
@@ -1009,27 +1003,19 @@ async function testSumopodConnection() {
 
   const ps = paymentSettings.value
   const apiUrl = ps.sumopod_sandbox ? ps.sumopod_sandbox_api_url : ps.sumopod_production_api_url
-  const apiKey = ps.sumopod_sandbox ? ps.sumopod_sandbox_api_key : ps.sumopod_production_api_key
 
   if (!apiUrl) {
     sumopodTestResult.value = { success: false, message: 'API URL belum dikonfigurasi.' }
     testingSumopod.value = false
     return
   }
-  if (!apiKey) {
-    sumopodTestResult.value = { success: false, message: 'API Key belum dikonfigurasi.' }
-    testingSumopod.value = false
-    return
-  }
 
-  // Can't test SumoPod directly from browser (CORS).
-  // Validate that config is complete and well-formed.
   try {
     const url = new URL(apiUrl)
     if (!url.protocol.startsWith('https')) {
       sumopodTestResult.value = { success: false, message: 'API URL harus menggunakan HTTPS.' }
     } else {
-      sumopodTestResult.value = { success: true, message: `✓ Konfigurasi lengkap. URL: ${url.host}` }
+      sumopodTestResult.value = { success: true, message: `✓ API URL valid: ${url.host}. API Key dikelola di API Keys.` }
     }
   } catch {
     sumopodTestResult.value = { success: false, message: 'API URL tidak valid.' }
