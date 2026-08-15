@@ -84,10 +84,76 @@
           </div>
         </div>
         <div class="grid grid-cols-2 gap-4">
-          <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingWebinar.is_free" class="rounded" /> Gratis</label>
-          <div v-if="!editingWebinar.is_free">
-            <label class="block text-xs text-gray-500 mb-1">Harga (IDR)</label>
-            <input v-model.number="editingWebinar.price_amount" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingWebinar.is_free" class="rounded" /> Gratis (semua peserta)</label>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Pricing Strategy</label>
+            <select v-model="editingWebinar.pricing_strategy" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" :disabled="editingWebinar.is_free">
+              <option value="fixed">Harga Tetap</option>
+              <option value="tiered">3-Tier Pricing</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Fixed Price -->
+        <div v-if="!editingWebinar.is_free && editingWebinar.pricing_strategy !== 'tiered'">
+          <label class="block text-xs text-gray-500 mb-1">Harga Normal (IDR)</label>
+          <input v-model.number="editingWebinar.price_amount" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+        </div>
+
+        <!-- 3-Tier Pricing Configuration -->
+        <div v-if="!editingWebinar.is_free && editingWebinar.pricing_strategy === 'tiered'" class="border-t border-gray-100 pt-4 space-y-4">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase">3-Tier Pricing</h4>
+
+          <!-- TIER 1: Free Early Bird -->
+          <div class="p-3 bg-green-50 border border-green-200 rounded-lg space-y-2">
+            <label class="flex items-center gap-2 text-sm font-medium text-green-800">
+              <input type="checkbox" v-model="editingWebinar.free_early_bird_enabled" class="rounded text-green-600" /> 🎁 FREE EARLY BIRD
+            </label>
+            <div v-if="editingWebinar.free_early_bird_enabled">
+              <label class="block text-xs text-gray-500 mb-1">Quota (peserta gratis)</label>
+              <input v-model.number="editingWebinar.free_early_bird_quota" type="number" min="1" class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="10" />
+            </div>
+          </div>
+
+          <!-- TIER 2: Early Price -->
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+            <label class="flex items-center gap-2 text-sm font-medium text-amber-800">
+              <input type="checkbox" v-model="editingWebinar.early_price_enabled" class="rounded text-amber-600" /> 🔥 EARLY PRICE
+            </label>
+            <div v-if="editingWebinar.early_price_enabled" class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Harga Early (IDR)</label>
+                <input v-model.number="editingWebinar.early_price_amount" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="25000" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Quota</label>
+                <input v-model.number="editingWebinar.early_price_quota" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="20" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Period Start (optional)</label>
+                <input v-model="editingWebinar.early_price_start" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Period End (optional)</label>
+                <input v-model="editingWebinar.early_price_end" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" />
+              </div>
+            </div>
+          </div>
+
+          <!-- TIER 3: Normal Price -->
+          <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+            <p class="text-sm font-medium text-gray-700">💰 NORMAL PRICE</p>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Harga Normal (IDR)</label>
+              <input v-model.number="editingWebinar.normal_price_amount" type="number" min="0" class="w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="50000" />
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="text-[10px] text-gray-400 bg-gray-50 rounded p-2">
+            <p v-if="editingWebinar.free_early_bird_enabled">Peserta #1–#{{ editingWebinar.free_early_bird_quota || '?' }} → GRATIS</p>
+            <p v-if="editingWebinar.early_price_enabled">Peserta #{{ (editingWebinar.free_early_bird_enabled ? (editingWebinar.free_early_bird_quota || 0) : 0) + 1 }}–#{{ (editingWebinar.free_early_bird_enabled ? (editingWebinar.free_early_bird_quota || 0) : 0) + (editingWebinar.early_price_quota || 0) }} → Rp{{ Number(editingWebinar.early_price_amount || 0).toLocaleString('id-ID') }}</p>
+            <p>Peserta selanjutnya → Rp{{ Number(editingWebinar.normal_price_amount || 0).toLocaleString('id-ID') }}</p>
           </div>
         </div>
 
@@ -376,7 +442,7 @@ async function saveWebinar() {
     scheduled_at: form.scheduled_at || null,
     end_at: form.end_at || null,
     is_free: form.is_free ?? true,
-    price_amount: form.is_free ? 0 : (Number(form.price_amount) || 0),
+    price_amount: form.is_free ? 0 : (Number(form.price_amount) || Number(form.normal_price_amount) || 0),
     cover_url: form.cover_url || null,
     payment_instructions: form.payment_instructions || null,
     payment_method: form.payment_method || 'sumopod',
@@ -387,6 +453,16 @@ async function saveWebinar() {
     link_visible_before_minutes: Number(form.link_visible_before_minutes) || 60,
     allow_waiting_list: form.allow_waiting_list || false,
     slug: form.slug || null,
+    // 3-Tier Pricing
+    pricing_strategy: form.pricing_strategy || 'fixed',
+    free_early_bird_enabled: form.free_early_bird_enabled || false,
+    free_early_bird_quota: Number(form.free_early_bird_quota) || 0,
+    early_price_enabled: form.early_price_enabled || false,
+    early_price_amount: Number(form.early_price_amount) || 0,
+    early_price_quota: Number(form.early_price_quota) || 0,
+    early_price_start: form.early_price_start || null,
+    early_price_end: form.early_price_end || null,
+    normal_price_amount: Number(form.normal_price_amount) || Number(form.price_amount) || 0,
   }
 
   if (import.meta.env.VITE_APP_ENV === 'development') {
