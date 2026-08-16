@@ -148,8 +148,6 @@ onMounted(() => {
   robots.setAttribute('content', 'index, follow')
 })
 
-export default {
-}
 </script>
 
 <style scoped>
