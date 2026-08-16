@@ -366,10 +366,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Increment article read count
-CREATE OR REPLACE FUNCTION increment_article_read_count(p_article_id UUID)
+CREATE OR REPLACE FUNCTION increment_article_read_count(article_id UUID)
 RETURNS VOID AS $$
 BEGIN
-  UPDATE kinora_articles SET read_count = COALESCE(read_count, 0) + 1 WHERE id = p_article_id;
+  UPDATE kinora_articles SET read_count = COALESCE(read_count, 0) + 1 WHERE id = article_id;
 END;
 $$ LANGUAGE plpgsql;
 

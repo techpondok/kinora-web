@@ -19,6 +19,7 @@
           <div class="space-y-2 text-sm">
             <a :href="footer.help_url || '/help'" class="block hover:text-white transition">Pusat Bantuan</a>
             <a :href="footer.privacy_url || '/privacy'" class="block hover:text-white transition">Kebijakan Privasi</a>
+            <a href="/delete-account" class="block hover:text-white transition">Delete Account</a>
             <a :href="footer.terms_url || '/terms'" class="block hover:text-white transition">Syarat & Ketentuan</a>
           </div>
         </div>

@@ -34,6 +34,11 @@ const routes = [
     component: () => import('../pages/HelpPage.vue'),
   },
   {
+    path: '/delete-account',
+    name: 'DeleteAccount',
+    component: () => import('../pages/DeleteAccountPage.vue'),
+  },
+  {
     path: '/about',
     name: 'About',
     component: () => import('../pages/AboutPage.vue'),
