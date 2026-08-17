@@ -70,9 +70,9 @@
           <tbody>
             <tr v-for="p in filteredPromos" :key="p.id" class="border-b border-gray-50 hover:bg-gray-50/50">
               <td class="px-4 py-3 font-mono font-medium text-gray-900">{{ p.code }}</td>
-              <td class="px-4 py-3"><span class="px-2 py-0.5 text-[10px] rounded-full font-medium" :class="typeClass(p.promo_type)">{{ typeLabel(p.promo_type) }}</span></td>
+              <td class="px-4 py-3"><span class="px-2 py-0.5 text-[10px] rounded-full font-medium" :class="typeClass(promoType(p))">{{ typeLabel(promoType(p)) }}</span></td>
               <td class="px-4 py-3 text-xs text-gray-600">{{ benefitSummary(p) }}</td>
-              <td class="px-4 py-3 text-xs text-gray-600">{{ p.total_redemptions || 0 }}{{ p.redemption_limit_type === 'limited' ? ` / ${p.max_redemptions}` : '' }}</td>
+              <td class="px-4 py-3 text-xs text-gray-600">{{ p.redemption_count ?? p.total_redemptions ?? 0 }} / {{ p.max_redemptions || 'Unlimited' }}</td>
               <td class="px-4 py-3 text-xs text-gray-500">{{ validityLabel(p) }}</td>
               <td class="px-4 py-3"><span class="px-2 py-0.5 text-[10px] rounded-full font-medium" :class="statusClass(computeStatus(p))">{{ computeStatus(p) }}</span></td>
               <td class="px-4 py-3">
@@ -112,7 +112,7 @@
               </div>
               <div>
                 <label class="block text-xs text-gray-500 mb-1">Promo Type *</label>
-                <select v-model="editing.promo_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                <select v-model="editing.type" @change="editing.promo_type = editing.type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
                   <option value="trial">Trial</option>
                   <option value="access_pass">Access Pass</option>
                   <option value="discount">Discount</option>
@@ -126,7 +126,7 @@
           </section>
 
           <!-- TRIAL Benefit -->
-          <section v-if="editing.promo_type === 'trial'" class="space-y-3">
+          <section v-if="editing.type === 'trial'" class="space-y-3">
             <h4 class="text-xs font-semibold text-gray-400 uppercase">Trial Benefit</h4>
             <div class="grid grid-cols-2 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Trial Days *</label><input v-model.number="editing.trial_days" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="14" /></div>
@@ -140,7 +140,7 @@
           </section>
 
           <!-- ACCESS PASS Benefit -->
-          <section v-if="editing.promo_type === 'access_pass'" class="space-y-3">
+          <section v-if="editing.type === 'access_pass'" class="space-y-3">
             <h4 class="text-xs font-semibold text-gray-400 uppercase">Access Pass Benefit</h4>
             <div class="grid grid-cols-2 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Plan</label><input v-model="editing.access_plan" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Family Plus" /></div>
@@ -157,7 +157,7 @@
           </section>
 
           <!-- DISCOUNT Benefit -->
-          <section v-if="editing.promo_type === 'discount'" class="space-y-3">
+          <section v-if="editing.type === 'discount'" class="space-y-3">
             <h4 class="text-xs font-semibold text-gray-400 uppercase">Discount Configuration</h4>
             <div><label class="block text-xs text-gray-500 mb-1">Discount Type</label>
               <select v-model="editing.discount_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="percentage">Percentage</option><option value="fixed">Fixed Amount</option></select>
@@ -175,7 +175,7 @@
           </section>
 
           <!-- FAMILY INVITE -->
-          <section v-if="editing.promo_type === 'family_invite'" class="space-y-3">
+          <section v-if="editing.type === 'family_invite'" class="space-y-3">
             <h4 class="text-xs font-semibold text-gray-400 uppercase">Family Invite</h4>
             <div class="grid grid-cols-2 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Invitee Benefit</label>
@@ -249,7 +249,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { supabase } from '../lib/supabase.js'
+import { supabase, envInfo } from '../lib/supabase.js'
 
 const promos = ref([])
 const loading = ref(true)
@@ -262,12 +262,12 @@ const filterType = ref('')
 const filterStatus = ref('')
 const dirty = ref(false)
 
-const totalRedemptions = computed(() => promos.value.reduce((sum, p) => sum + (p.total_redemptions || 0), 0))
+const totalRedemptions = computed(() => promos.value.reduce((sum, p) => sum + (p.redemption_count ?? p.total_redemptions ?? 0), 0))
 
 const filteredPromos = computed(() => {
   let list = promos.value
   if (search.value) list = list.filter(p => p.code.toLowerCase().includes(search.value.toLowerCase()))
-  if (filterType.value) list = list.filter(p => p.promo_type === filterType.value)
+  if (filterType.value) list = list.filter(p => promoType(p) === filterType.value)
   if (filterStatus.value) list = list.filter(p => computeStatus(p) === filterStatus.value)
   return list
 })
@@ -279,10 +279,11 @@ function computeStatus(p) {
   const now = new Date()
   if (p.starts_at && new Date(p.starts_at) > now) return 'scheduled'
   if (p.expires_at && new Date(p.expires_at) < now) return 'expired'
-  if (p.redemption_limit_type === 'limited' && (p.total_redemptions || 0) >= p.max_redemptions) return 'limit_reached'
+  if (p.max_redemptions && (p.redemption_count ?? p.total_redemptions ?? 0) >= p.max_redemptions) return 'limit_reached'
   return 'active'
 }
 
+function promoType(p) { return p.type || p.promo_type }
 function typeLabel(t) { return { trial: 'Trial', access_pass: 'Access Pass', discount: 'Discount', family_invite: 'Family Invite' }[t] || t }
 function typeClass(t) { return { trial: 'bg-green-100 text-green-700', access_pass: 'bg-blue-100 text-blue-700', discount: 'bg-amber-100 text-amber-700', family_invite: 'bg-purple-100 text-purple-700' }[t] || 'bg-gray-100 text-gray-500' }
 function statusClass(s) { return { active: 'bg-green-100 text-green-700', scheduled: 'bg-blue-100 text-blue-700', expired: 'bg-gray-100 text-gray-500', disabled: 'bg-gray-100 text-gray-500', draft: 'bg-amber-100 text-amber-700', limit_reached: 'bg-red-100 text-red-600', archived: 'bg-gray-100 text-gray-400' }[s] || 'bg-gray-100 text-gray-500' }
@@ -312,9 +313,10 @@ function generateCode() {
 
 function openEditor(promo) {
   if (promo) {
-    editing.value = { ...promo, _bonus_storage_val: bytesToUnit(promo.trial_bonus_storage_bytes || promo.access_bonus_storage_bytes || 0), _bonus_storage_unit: 'GB' }
+    const type = promoType(promo)
+    editing.value = { ...promo, promo_type: type, type, discount_percentage: promo.discount_percent ?? promo.discount_percentage ?? 0, _bonus_storage_val: bytesToUnit(promo.bonus_storage_bytes || promo.trial_bonus_storage_bytes || promo.access_bonus_storage_bytes || 0), _bonus_storage_unit: 'GB' }
   } else {
-    editing.value = { promo_type: 'trial', is_active: true, redemption_limit_type: 'unlimited', redemption_rule: 'once_per_family', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'days', invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus' }
+    editing.value = { promo_type: 'trial', type: 'trial', is_active: true, one_time_per_user: true, redemption_limit_type: 'unlimited', redemption_rule: 'once_per_user', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'days', invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus' }
   }
   showEditor.value = true
   dirty.value = false
@@ -328,10 +330,13 @@ function confirmClose() {
 
 async function savePromo(targetStatus) {
   editorError.value = ''
-  if (!editing.value.code) { editorError.value = 'Code is required'; return }
-  if (!editing.value.promo_type) { editorError.value = 'Promo Type is required'; return }
-  if (editing.value.promo_type === 'trial' && (!editing.value.trial_days || editing.value.trial_days < 1)) { editorError.value = 'Trial Days must be > 0'; return }
-  if (editing.value.promo_type === 'discount' && editing.value.discount_type === 'percentage' && (!editing.value.discount_percentage || editing.value.discount_percentage < 1 || editing.value.discount_percentage > 100)) { editorError.value = 'Discount % must be 1–100'; return }
+
+  const normalizedType = (editing.value.type || editing.value.promo_type || 'trial')
+  const code = String(editing.value.code || '').trim().toUpperCase()
+  if (!code) { editorError.value = 'Code is required'; return }
+  if (!normalizedType) { editorError.value = 'Promo Type is required'; return }
+  if (normalizedType === 'trial' && (!editing.value.trial_days || Number(editing.value.trial_days) < 1)) { editorError.value = 'Trial Days must be > 0'; return }
+  if (normalizedType === 'discount' && (Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) <= 0 || Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) > 100)) { editorError.value = 'Discount % must be 1–100'; return }
 
   saving.value = true
   const storageBytes = unitToBytes(editing.value._bonus_storage_val || 0, editing.value._bonus_storage_unit || 'GB')
@@ -340,17 +345,32 @@ async function savePromo(targetStatus) {
   delete payload._bonus_storage_val
   delete payload._bonus_storage_unit
 
-  if (payload.promo_type === 'trial') payload.trial_bonus_storage_bytes = storageBytes
-  if (payload.promo_type === 'access_pass') payload.access_bonus_storage_bytes = storageBytes
+  payload.code = code
+  payload.type = normalizedType
+  payload.promo_type = normalizedType
+  payload.discount_percent = Number(payload.discount_percent ?? payload.discount_percentage ?? 0)
+  payload.bonus_storage_bytes = Number(storageBytes || 0)
+  payload.notes = payload.notes ?? payload.internal_notes ?? null
+  payload.one_time_per_user = payload.one_time_per_user ?? true
+  payload.is_active = !!payload.is_active
+  payload.max_redemptions = payload.max_redemptions === '' || payload.max_redemptions === undefined || payload.max_redemptions === null ? null : Number(payload.max_redemptions)
+  payload.expires_at = payload.expires_at ? new Date(payload.expires_at).toISOString() : null
+
+  if (payload.type === 'trial') payload.trial_days = Number(payload.trial_days || 0)
+  if (payload.type === 'access_pass') payload.access_bonus_storage_bytes = payload.bonus_storage_bytes
+  if (payload.type === 'discount' && !payload.discount_percent) payload.discount_percent = 0
 
   payload.status = targetStatus
   payload.updated_at = new Date().toISOString()
   if (!payload.starts_at) payload.starts_at = null
-  if (!payload.expires_at) payload.expires_at = null
+
+  console.info('[PROMO][ENV]', { environment: envInfo.env })
+  console.info('[PROMO][SUPABASE]', { project: envInfo.projectRef })
+  console.info('[PROMO][CREATE]', { table: 'kinora_promo_codes' })
 
   let result
   if (payload.id) {
-    const { id, created_at, created_by, total_redemptions, ...rest } = payload
+    const { id, created_at, created_by, total_redemptions, redemption_count, ...rest } = payload
     result = await supabase.from('kinora_promo_codes').update(rest).eq('id', id)
   } else {
     const { data: { user } } = await supabase.auth.getUser()
@@ -359,7 +379,16 @@ async function savePromo(targetStatus) {
     result = await supabase.from('kinora_promo_codes').insert(payload)
   }
 
-  if (result.error) { editorError.value = result.error.message; saving.value = false; return }
+  if (result.error) {
+    console.error('[PROMO][CREATE][ERROR]', result.error)
+    const msg = result.error.message || ''
+    editorError.value = msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')
+      ? 'Promo code already exists'
+      : 'Promo Code gagal dibuat. Konfigurasi database Promo Code belum tersedia.'
+    saving.value = false
+    return
+  }
+
   showEditor.value = false
   saving.value = false
   loadPromos()
@@ -398,7 +427,10 @@ function bytesToUnit(bytes) {
 
 async function loadPromos() {
   loading.value = true
-  const { data } = await supabase.from('kinora_promo_codes').select('*').order('created_at', { ascending: false })
+  console.info('[PROMO][ENV]', { environment: envInfo.env })
+  console.info('[PROMO][SUPABASE]', { project: envInfo.projectRef })
+  const { data, error } = await supabase.from('kinora_promo_codes').select('*').order('created_at', { ascending: false })
+  if (error) console.error('[PROMO][LOAD][ERROR]', error)
   promos.value = data || []
   loading.value = false
 }

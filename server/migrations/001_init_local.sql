@@ -330,6 +330,7 @@ CREATE TABLE IF NOT EXISTS kinora_marketplace_orders (
 CREATE TABLE IF NOT EXISTS kinora_promo_codes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL DEFAULT 'trial' CHECK (type IN ('trial', 'access_pass', 'discount', 'family_invite')),
   internal_name TEXT,
   promo_type TEXT NOT NULL CHECK (promo_type IN ('trial', 'access_pass', 'discount', 'family_invite')),
   customer_description TEXT,
@@ -348,6 +349,11 @@ CREATE TABLE IF NOT EXISTS kinora_promo_codes (
   email_domain_restriction TEXT,
   allow_stacking BOOLEAN DEFAULT false,
   trial_days INTEGER,
+  redemption_count INTEGER NOT NULL DEFAULT 0,
+  discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
+  bonus_storage_bytes BIGINT NOT NULL DEFAULT 0,
+  notes TEXT,
+  one_time_per_user BOOLEAN NOT NULL DEFAULT true,
   trial_plan TEXT,
   trial_bonus_storage_bytes BIGINT DEFAULT 0,
   access_plan TEXT,
@@ -376,6 +382,7 @@ CREATE TABLE IF NOT EXISTS kinora_promo_codes (
 
 CREATE TABLE IF NOT EXISTS kinora_promo_redemptions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  promo_code_id UUID REFERENCES kinora_promo_codes(id) ON DELETE CASCADE,
   promo_id UUID NOT NULL REFERENCES kinora_promo_codes(id),
   promo_code TEXT NOT NULL,
   user_id UUID NOT NULL REFERENCES auth_users(id),
@@ -388,6 +395,9 @@ CREATE TABLE IF NOT EXISTS kinora_promo_redemptions (
   metadata JSONB DEFAULT '{}',
   reserved_at TIMESTAMPTZ,
   redeemed_at TIMESTAMPTZ DEFAULT now(),
+  trial_days INTEGER NOT NULL DEFAULT 0,
+  discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
+  bonus_storage_bytes BIGINT NOT NULL DEFAULT 0,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -436,7 +446,9 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON kinora_notifications(user_i
 CREATE INDEX IF NOT EXISTS idx_webinar_reg_webinar ON kinora_webinar_registrations(webinar_id);
 CREATE INDEX IF NOT EXISTS idx_webinar_reg_user ON kinora_webinar_registrations(user_id);
 CREATE INDEX IF NOT EXISTS idx_promo_code ON kinora_promo_codes(code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kinora_promo_codes_code_lower_unique ON kinora_promo_codes(lower(code));
 CREATE INDEX IF NOT EXISTS idx_promo_status ON kinora_promo_codes(status);
+CREATE INDEX IF NOT EXISTS idx_redemption_promo ON kinora_promo_redemptions(promo_code_id);
 CREATE INDEX IF NOT EXISTS idx_redemption_user ON kinora_promo_redemptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_banners_placement ON kinora_banners(placement);
 CREATE INDEX IF NOT EXISTS idx_banners_active ON kinora_banners(is_active);

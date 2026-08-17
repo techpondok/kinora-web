@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS kinora_config_audit_log (
 -- RLS on audit log
 ALTER TABLE kinora_config_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can read config audit log" ON kinora_config_audit_log;
+DROP POLICY IF EXISTS "Admins can insert config audit log" ON kinora_config_audit_log;
+
 CREATE POLICY "Admins can read config audit log"
   ON kinora_config_audit_log FOR SELECT
   USING (is_kinora_admin());

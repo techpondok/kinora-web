@@ -316,7 +316,7 @@
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="p in promoCodes" :key="p.id">
                   <td class="py-2 font-mono font-medium text-gray-900">{{ p.code }}</td>
-                  <td class="py-2 text-gray-600">{{ formatPromoType(p.code_type) }}</td>
+                  <td class="py-2 text-gray-600">{{ formatPromoType(p.type || p.promo_type) }}</td>
                   <td class="py-2 text-gray-600">{{ p.trial_days }}d</td>
                   <td class="py-2 text-gray-600">{{ p.redemption_count }}/{{ p.max_redemptions || '∞' }}</td>
                   <td class="py-2"><span :class="p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" class="px-2 py-0.5 text-xs rounded-full">{{ p.is_active ? 'Active' : 'Inactive' }}</span></td>
@@ -356,21 +356,20 @@
                 </div>
                 <div>
                   <label class="block text-xs text-gray-500 mb-1">Tipe</label>
-                  <select v-model="editingPromo.code_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                  <select v-model="editingPromo.type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
                     <option value="trial">Trial</option>
                     <option value="access_pass">Access Pass</option>
                     <option value="discount">Discount</option>
-                    <option value="founder">Founder</option>
                     <option value="family_invite">Family Invite</option>
                   </select>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-500 mb-1">{{ editingPromo.code_type === 'access_pass' ? 'Duration (days)' : 'Trial Days' }}</label><input v-model.number="editingPromo.trial_days" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
+                <div><label class="block text-xs text-gray-500 mb-1">{{ editingPromo.type === 'access_pass' ? 'Duration (days)' : 'Trial Days' }}</label><input v-model.number="editingPromo.trial_days" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
                 <div><label class="block text-xs text-gray-500 mb-1">Max Redemptions (kosong = unlimited)</label><input v-model.number="editingPromo.max_redemptions" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
               </div>
               <!-- Access Pass specific fields -->
-              <div v-if="editingPromo.code_type === 'access_pass'" class="grid grid-cols-2 gap-4">
+              <div v-if="editingPromo.type === 'access_pass'" class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs text-gray-500 mb-1">Target Plan</label>
                   <select v-model="editingPromo.target_plan" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
@@ -401,7 +400,6 @@
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingPromo.is_active" class="rounded" /> Active</label>
-                <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingPromo.grants_founder_badge" class="rounded" /> Founder Badge</label>
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingPromo.one_time_per_user" class="rounded" /> One-time per user</label>
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editingPromo.one_time_per_family" class="rounded" /> One-time per family</label>
               </div>
@@ -1415,7 +1413,7 @@ const confirmDeletePromo = ref(null)
 function newPromoTemplate() {
   return {
     code: '',
-    code_type: 'trial',
+    type: 'trial',
     trial_days: 7,
     max_redemptions: null,
     discount_percent: 0,
@@ -1423,7 +1421,6 @@ function newPromoTemplate() {
     expires_at: null,
     note: '',
     is_active: true,
-    grants_founder_badge: false,
     one_time_per_user: true,
     one_time_per_family: true,
     target_plan: 'family_plus',
@@ -1434,7 +1431,7 @@ function newPromoTemplate() {
 async function loadPromoCodes() {
   promoLoading.value = true
   const { data: codes } = await supabase
-    .from('kinora_trial_promo_codes')
+    .from('kinora_promo_codes')
     .select('*')
     .order('created_at', { ascending: false })
   promoCodes.value = codes || []
@@ -1443,24 +1440,35 @@ async function loadPromoCodes() {
 
 async function savePromo() {
   promoError.value = ''
-  if (!editingPromo.value.code?.trim()) { promoError.value = 'Code wajib diisi'; return }
+  const code = String(editingPromo.value.code || '').trim().toUpperCase()
+  if (!code) { promoError.value = 'Code wajib diisi'; return }
+  if (editingPromo.value.type === 'trial' && (!editingPromo.value.trial_days || Number(editingPromo.value.trial_days) <= 0)) { promoError.value = 'Trial Days harus lebih dari 0'; return }
+  if (editingPromo.value.type === 'discount' && (Number(editingPromo.value.discount_percent || 0) <= 0 || Number(editingPromo.value.discount_percent || 0) > 100)) { promoError.value = 'Discount % harus 1-100'; return }
 
   promoSaving.value = true
   const payload = { ...editingPromo.value }
-  payload.code = payload.code.toUpperCase().trim()
-  if (!payload.max_redemptions) payload.max_redemptions = null
-  if (!payload.expires_at) payload.expires_at = null
+  payload.code = code
+  payload.type = payload.type || 'trial'
+  payload.promo_type = payload.type
+  payload.max_redemptions = payload.max_redemptions === '' || payload.max_redemptions === undefined || payload.max_redemptions === null ? null : Number(payload.max_redemptions)
+  payload.discount_percent = Number(payload.discount_percent || 0)
+  payload.bonus_storage_bytes = Number(payload.bonus_storage_bytes || 0)
+  payload.expires_at = payload.expires_at ? new Date(payload.expires_at).toISOString() : null
+  payload.one_time_per_user = Boolean(payload.one_time_per_user)
+  payload.notes = payload.note || null
 
   let result
   if (payload.id) {
-    const { id, created_at, redemption_count, updated_at, ...rest } = payload
-    result = await supabase.from('kinora_trial_promo_codes').update(rest).eq('id', id)
+    const { id, created_at, redemption_count, updated_at, note, ...rest } = payload
+    result = await supabase.from('kinora_promo_codes').update(rest).eq('id', id)
   } else {
-    result = await supabase.from('kinora_trial_promo_codes').insert(payload)
+    const { note, ...rest } = payload
+    result = await supabase.from('kinora_promo_codes').insert(rest)
   }
 
   if (result.error) {
-    promoError.value = result.error.message.includes('unique') ? 'Code sudah digunakan.' : result.error.message
+    console.error('[PROMO][CREATE][ERROR]', result.error)
+    promoError.value = result.error.message.includes('unique') ? 'Code sudah digunakan.' : 'Promo Code gagal dibuat. Konfigurasi database Promo Code belum tersedia.'
   } else {
     showPromoEditor.value = false
     loadPromoCodes()
@@ -1469,18 +1477,18 @@ async function savePromo() {
 }
 
 async function togglePromoActive(p) {
-  await supabase.from('kinora_trial_promo_codes').update({ is_active: !p.is_active }).eq('id', p.id)
+  await supabase.from('kinora_promo_codes').update({ is_active: !p.is_active }).eq('id', p.id)
   loadPromoCodes()
 }
 
 function formatPromoType(type) {
-  const map = { trial: 'Trial', discount: 'Discount', founder: 'Founder', family_invite: 'Family Invite', access_pass: 'Access Pass' }
+  const map = { trial: 'Trial', discount: 'Discount', family_invite: 'Family Invite', access_pass: 'Access Pass' }
   return map[type] || type
 }
 
 async function doDeletePromo() {
   if (!confirmDeletePromo.value) return
-  await supabase.from('kinora_trial_promo_codes').delete().eq('id', confirmDeletePromo.value.id)
+  await supabase.from('kinora_promo_codes').delete().eq('id', confirmDeletePromo.value.id)
   confirmDeletePromo.value = null
   loadPromoCodes()
 }

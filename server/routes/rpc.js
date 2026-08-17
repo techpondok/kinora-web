@@ -92,6 +92,78 @@ router.post('/founder_save_setting', async (req, res) => {
   }
 })
 
+// POST /rest/v1/rpc/redeem_kinora_promo
+router.post('/redeem_kinora_promo', async (req, res) => {
+  const userId = req.user?.sub
+  const code = String(req.body?.p_code || req.body?.code || '').trim().toUpperCase()
+  if (!userId) return res.json({ success: false, message: 'Promo tidak berlaku untuk akun ini' })
+  if (!code) return res.json({ success: false, message: 'Promo tidak ditemukan' })
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const { rows } = await client.query(
+      `SELECT * FROM kinora_promo_codes WHERE lower(code) = lower($1) FOR UPDATE`,
+      [code]
+    )
+    const promo = rows[0]
+    if (!promo) {
+      await client.query('ROLLBACK')
+      return res.json({ success: false, message: 'Promo tidak ditemukan' })
+    }
+    if (!promo.is_active) {
+      await client.query('ROLLBACK')
+      return res.json({ success: false, message: 'Promo sudah tidak aktif' })
+    }
+    if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+      await client.query('ROLLBACK')
+      return res.json({ success: false, message: 'Promo sudah kedaluwarsa' })
+    }
+    if (promo.max_redemptions && Number(promo.redemption_count || promo.total_redemptions || 0) >= Number(promo.max_redemptions)) {
+      await client.query('ROLLBACK')
+      return res.json({ success: false, message: 'Promo code has reached its redemption limit.' })
+    }
+    if (promo.one_time_per_user !== false) {
+      const used = await client.query(
+        'SELECT id FROM kinora_promo_redemptions WHERE promo_code_id = $1 AND user_id = $2 LIMIT 1',
+        [promo.id, userId]
+      )
+      if (used.rows.length) {
+        await client.query('ROLLBACK')
+        return res.json({ success: false, message: 'Promo has already been used by this account' })
+      }
+    }
+
+    await client.query(
+      `INSERT INTO kinora_promo_redemptions
+       (promo_code_id, promo_id, promo_code, user_id, benefit_type, benefit_value, trial_days, discount_percent, bonus_storage_bytes, metadata)
+       VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        promo.id,
+        promo.code,
+        userId,
+        promo.type || promo.promo_type,
+        String(promo.trial_days || promo.discount_percent || promo.bonus_storage_bytes || ''),
+        promo.trial_days || 0,
+        promo.discount_percent || promo.discount_percentage || 0,
+        promo.bonus_storage_bytes || 0,
+        { type: promo.type || promo.promo_type, promo_code: promo.code },
+      ]
+    )
+    await client.query(
+      'UPDATE kinora_promo_codes SET redemption_count = COALESCE(redemption_count, 0) + 1, total_redemptions = COALESCE(total_redemptions, 0) + 1 WHERE id = $1',
+      [promo.id]
+    )
+    await client.query('COMMIT')
+    res.json({ success: true, promo_code: promo.code, type: promo.type || promo.promo_type, message: 'Promo berhasil digunakan' })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    res.status(500).json({ success: false, message: err.message })
+  } finally {
+    client.release()
+  }
+})
+
 // Generic fallback for unmapped RPCs
 router.post('/:fn', async (req, res) => {
   const { fn } = req.params

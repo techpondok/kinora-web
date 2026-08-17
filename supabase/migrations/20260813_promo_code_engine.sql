@@ -101,6 +101,11 @@ CREATE INDEX IF NOT EXISTS idx_redemption_code ON kinora_promo_redemptions(promo
 ALTER TABLE kinora_promo_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE kinora_promo_redemptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins manage promo codes" ON kinora_promo_codes;
+DROP POLICY IF EXISTS "Admins read all redemptions" ON kinora_promo_redemptions;
+DROP POLICY IF EXISTS "Users can read own redemptions" ON kinora_promo_redemptions;
+DROP POLICY IF EXISTS "Backend inserts redemptions" ON kinora_promo_redemptions;
+
 CREATE POLICY "Admins manage promo codes" ON kinora_promo_codes FOR ALL USING (is_kinora_admin());
 CREATE POLICY "Admins read all redemptions" ON kinora_promo_redemptions FOR SELECT USING (is_kinora_admin());
 CREATE POLICY "Users can read own redemptions" ON kinora_promo_redemptions FOR SELECT USING (auth.uid() = user_id);

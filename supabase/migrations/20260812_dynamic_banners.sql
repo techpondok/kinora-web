@@ -50,9 +50,11 @@ CREATE INDEX IF NOT EXISTS idx_banners_audience ON kinora_banners(audience);
 ALTER TABLE kinora_banners ENABLE ROW LEVEL SECURITY;
 
 -- Admins full access
+DROP POLICY IF EXISTS "Admins manage banners" ON kinora_banners;
 CREATE POLICY "Admins manage banners" ON kinora_banners FOR ALL USING (is_kinora_admin());
 
 -- Authenticated users can read active banners (for Mobile/Web API)
+DROP POLICY IF EXISTS "Users read active banners" ON kinora_banners;
 CREATE POLICY "Users read active banners" ON kinora_banners FOR SELECT
   USING (
     is_active = true
