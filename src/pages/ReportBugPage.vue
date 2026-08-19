@@ -50,6 +50,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
+import { createSupportTicket, validateSupportAttachment } from '../lib/supportTickets.js'
 
 const user = ref(null)
 const form = ref({ title: '', category: '', impact: 'medium', steps_to_reproduce: '', expected_result: '', actual_result: '', description: '' })
@@ -66,46 +67,51 @@ onMounted(async () => {
   if (session) user.value = session.user
 })
 
-function handleFile(e) { attachment.value = e.target.files?.[0] || null }
+function handleFile(e) {
+  const file = e.target.files?.[0] || null
+  const validation = validateSupportAttachment(file)
+  if (validation) {
+    attachment.value = null
+    error.value = validation
+    e.target.value = ''
+    return
+  }
+  attachment.value = file
+  error.value = ''
+}
 
 async function submit() {
   if (!form.value.title || !form.value.description) { error.value = 'Judul dan deskripsi wajib diisi'; return }
+  if (submitting.value) return
   submitting.value = true; error.value = ''
 
-  // Generate ticket number
-  const { data: numData } = await supabase.rpc('generate_ticket_number', { p_type: 'bug' })
-  const tNum = numData || `KNR-BUG-${Date.now()}`
-
-  // Upload attachment
-  let attachments = []
-  if (attachment.value) {
-    const path = `tickets/${tNum}/${Date.now()}.${attachment.value.name.split('.').pop()}`
-    const { error: upErr } = await supabase.storage.from('articles').upload(path, attachment.value, { upsert: false })
-    if (!upErr) {
-      const { data: url } = supabase.storage.from('articles').getPublicUrl(path)
-      attachments.push({ name: attachment.value.name, url: url.publicUrl })
-    }
+  try {
+    const ticket = await createSupportTicket({
+      type: 'bug',
+      title: form.value.title,
+      description: form.value.description,
+      priority: form.value.impact === 'medium' ? 'normal' : form.value.impact,
+      category: form.value.category,
+      attachment: attachment.value,
+      fields: {
+        impact: form.value.impact,
+        steps_to_reproduce: form.value.steps_to_reproduce || null,
+        expected_result: form.value.expected_result || null,
+        actual_result: form.value.actual_result || null,
+        platform: 'web',
+        browser: navigator.userAgent.split(' ').pop(),
+        page_url: window.location.href,
+      },
+      metadata: { os: navigator.platform },
+    })
+    success.value = true
+    ticketNumber.value = ticket.ticket_number
+    form.value = { title: '', category: '', impact: 'medium', steps_to_reproduce: '', expected_result: '', actual_result: '', description: '' }
+    attachment.value = null
+  } catch (err) {
+    error.value = err.message === 'AUTH_REQUIRED' ? 'Silakan login untuk membuat laporan bug.' : 'Gagal mengirim laporan. Silakan coba lagi.'
+  } finally {
+    submitting.value = false
   }
-
-  const { error: insertErr } = await supabase.from('support_tickets').insert({
-    ticket_number: tNum,
-    user_id: user.value.id,
-    type: 'bug',
-    title: form.value.title,
-    description: form.value.description,
-    category: form.value.category,
-    impact: form.value.impact,
-    steps_to_reproduce: form.value.steps_to_reproduce,
-    expected_result: form.value.expected_result,
-    actual_result: form.value.actual_result,
-    platform: 'web',
-    browser: navigator.userAgent.split(' ').pop(),
-    page_url: window.location.href,
-    attachments,
-    metadata: { os: navigator.platform },
-  })
-
-  if (insertErr) { error.value = insertErr.message } else { success.value = true; ticketNumber.value = tNum }
-  submitting.value = false
 }
 </script>

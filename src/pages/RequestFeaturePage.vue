@@ -33,6 +33,10 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Email (opsional)</label>
             <input v-model="form.email" type="email" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent" placeholder="Untuk follow-up jika perlu" />
           </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Attachment (opsional)</label>
+            <input type="file" accept="image/*" @change="handleFile" class="text-xs" />
+          </div>
 
           <div v-if="error" class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ error }}</div>
 
@@ -50,39 +54,50 @@
 
 <script setup>
 import { ref } from 'vue'
-import { supabase } from '../lib/supabase.js'
+import { createSupportTicket, validateSupportAttachment } from '../lib/supportTickets.js'
 
 const form = ref({ title: '', description: '', priority: 'medium', email: '' })
 const saving = ref(false)
 const submitted = ref(false)
 const error = ref('')
+const attachment = ref(null)
+
+function handleFile(e) {
+  const file = e.target.files?.[0] || null
+  const validation = validateSupportAttachment(file)
+  if (validation) {
+    attachment.value = null
+    error.value = validation
+    e.target.value = ''
+    return
+  }
+  attachment.value = file
+  error.value = ''
+}
 
 async function submitFeature() {
   if (!form.value.title || !form.value.description) { error.value = 'Judul dan deskripsi wajib diisi.'; return }
+  if (saving.value) return
   saving.value = true
   error.value = ''
 
-  const { data: { session } } = await supabase.auth.getSession()
-
-  const { error: insertErr } = await supabase.from('support_tickets').insert({
-    ticket_number: 'FT-' + Date.now().toString(36).toUpperCase(),
-    user_id: session?.user?.id || null,
-    type: 'feature',
-    status: 'open',
-    priority: form.value.priority === 'high' ? 'high' : 'normal',
-    title: form.value.title,
-    description: form.value.description,
-    contact_email: form.value.email || session?.user?.email || null,
-    metadata: { source: 'web', priority_preference: form.value.priority },
-  })
-
-  if (insertErr) {
-    error.value = 'Gagal mengirim: ' + insertErr.message
+  try {
+    await createSupportTicket({
+      type: 'feature',
+      title: form.value.title,
+      description: form.value.description,
+      priority: form.value.priority === 'high' ? 'high' : form.value.priority === 'low' ? 'low' : 'normal',
+      contactEmail: form.value.email,
+      attachment: attachment.value,
+      metadata: { priority_preference: form.value.priority },
+    })
+    form.value = { title: '', description: '', priority: 'medium', email: '' }
+    attachment.value = null
+    submitted.value = true
+  } catch (err) {
+    error.value = err.message === 'AUTH_REQUIRED' ? 'Silakan login untuk mengirim usulan fitur.' : 'Gagal mengirim laporan. Silakan coba lagi.'
+  } finally {
     saving.value = false
-    return
   }
-
-  saving.value = false
-  submitted.value = true
 }
 </script>
