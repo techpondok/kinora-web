@@ -724,12 +724,9 @@
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Primary Gateway</label>
                 <select v-model="paymentSettings.primary_payment_gateway" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" @change="markDirty">
-                  <option value="sumopod">Sumopod</option>
-                  <option value="tripay">Tripay</option>
-                  <option value="xendit">Xendit</option>
-                  <option value="stripe">Stripe</option>
-                  <option value="manual">Manual Transfer</option>
+                  <option value="sumopod">SumoPod</option>
                 </select>
+                <p class="text-[10px] text-gray-400 mt-1">Subscription & Storage menggunakan Google Play Billing (tidak diatur di sini).</p>
               </div>
             </div>
 
