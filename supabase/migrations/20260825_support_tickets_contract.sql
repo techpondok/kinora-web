@@ -99,3 +99,5 @@ WITH CHECK (is_kinora_admin() AND sender_id = (SELECT auth.uid()));
 GRANT SELECT, INSERT, UPDATE ON public.support_tickets TO authenticated;
 GRANT SELECT, INSERT ON public.ticket_messages TO authenticated;
 GRANT EXECUTE ON FUNCTION public.generate_ticket_number(TEXT) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
