@@ -292,6 +292,53 @@ CREATE TABLE IF NOT EXISTS kinora_notifications (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS kinora_broadcasts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  body TEXT DEFAULT '',
+  category TEXT DEFAULT 'general',
+  priority TEXT DEFAULT 'normal',
+  channels TEXT[] DEFAULT '{push,in_app}',
+  target_audience JSONB DEFAULT '{"type":"all_users"}',
+  scheduled_at TIMESTAMPTZ,
+  cta_label TEXT,
+  cta_url TEXT,
+  banner_url TEXT,
+  status TEXT DEFAULT 'draft',
+  target_count INTEGER DEFAULT 0,
+  sent_count INTEGER DEFAULT 0,
+  delivered_count INTEGER DEFAULT 0,
+  failed_count INTEGER DEFAULT 0,
+  opened_count INTEGER DEFAULT 0,
+  channel_results JSONB DEFAULT '{}',
+  last_error TEXT,
+  processing_started_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  cancelled_at TIMESTAMPTZ,
+  archived_at TIMESTAMPTZ,
+  created_by UUID REFERENCES auth_users(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS kinora_broadcast_deliveries (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  broadcast_id UUID NOT NULL REFERENCES kinora_broadcasts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth_users(id),
+  channel TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  provider_message_id TEXT,
+  sent_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  opened_at TIMESTAMPTZ,
+  failed_at TIMESTAMPTZ,
+  failure_reason TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ============================================================
 -- MARKETPLACE
 -- ============================================================

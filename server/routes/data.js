@@ -29,6 +29,8 @@ const ALLOWED_TABLES = [
   'kinora_banners',
   'kinora_content_preferences',
   'kinora_notifications',
+  'kinora_broadcasts',
+  'kinora_broadcast_deliveries',
   'kinora_marketplace_items',
   'kinora_marketplace_orders',
   'auth_users',

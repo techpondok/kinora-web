@@ -112,7 +112,7 @@
               </div>
               <div>
                 <label class="block text-xs text-gray-500 mb-1">Promo Type *</label>
-                <select v-model="editing.type" @change="editing.promo_type = editing.type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                <select v-model="editing.type" @change="onTypeChange" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
                   <option value="trial">Trial</option>
                   <option value="access_pass">Access Pass</option>
                   <option value="discount">Discount</option>
@@ -145,10 +145,22 @@
             <div class="grid grid-cols-2 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Plan</label><input v-model="editing.access_plan" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Family Plus" /></div>
               <div><label class="block text-xs text-gray-500 mb-1">Duration Type</label>
-                <select v-model="editing.access_duration_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="days">Days</option><option value="months">Months</option><option value="lifetime">Lifetime</option></select>
+                <select v-model="editing.access_duration_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="days">Days</option><option value="lifetime">Lifetime / Until revoked</option></select>
               </div>
             </div>
-            <div v-if="editing.access_duration_type !== 'lifetime'"><label class="block text-xs text-gray-500 mb-1">Duration Value *</label><input v-model.number="editing.access_duration_value" type="number" min="1" class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="30" /></div>
+            <div v-if="editing.access_duration_type !== 'lifetime'" class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Access Duration</label>
+                <select v-model="editing.access_duration_value" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                  <option :value="7">7 days</option>
+                  <option :value="30">30 days</option>
+                  <option :value="90">90 days</option>
+                  <option :value="365">365 days</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div v-if="editing.access_duration_value === 'custom'"><label class="block text-xs text-gray-500 mb-1">Custom Days *</label><input v-model.number="editing.access_duration_days" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="30" /></div>
+            </div>
             <div><label class="block text-xs text-gray-500 mb-1">Bonus Storage</label>
               <div class="flex gap-2"><input v-model.number="editing._bonus_storage_val" type="number" min="0" class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="0" />
                 <select v-model="editing._bonus_storage_unit" class="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="GB">GB</option><option value="MB">MB</option><option value="TB">TB</option></select>
@@ -311,12 +323,32 @@ function generateCode() {
   editing.value.code = code
 }
 
+function onTypeChange() {
+  const type = editing.value.type || 'trial'
+  editing.value.promo_type = type
+  if (type !== 'trial') editing.value.trial_days = 0
+  if (type !== 'discount') {
+    editing.value.discount_percent = 0
+    editing.value.discount_percentage = 0
+  }
+  if (type !== 'access_pass') {
+    editing.value.access_duration_value = null
+    editing.value.access_duration_days = null
+    editing.value.access_duration_type = 'days'
+    editing.value.access_lifetime = false
+  } else {
+    editing.value.access_plan = editing.value.access_plan || 'family_plus'
+    editing.value.access_duration_type = editing.value.access_duration_type || 'days'
+    editing.value.access_duration_value = editing.value.access_duration_value || 30
+  }
+}
+
 function openEditor(promo) {
   if (promo) {
     const type = promoType(promo)
     editing.value = { ...promo, promo_type: type, type, discount_percentage: promo.discount_percent ?? promo.discount_percentage ?? 0, _bonus_storage_val: bytesToUnit(promo.bonus_storage_bytes || promo.trial_bonus_storage_bytes || promo.access_bonus_storage_bytes || 0), _bonus_storage_unit: 'GB' }
   } else {
-    editing.value = { promo_type: 'trial', type: 'trial', is_active: true, one_time_per_user: true, redemption_limit_type: 'unlimited', redemption_rule: 'once_per_user', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'days', invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus' }
+    editing.value = { promo_type: 'trial', type: 'trial', trial_days: 7, is_active: true, one_time_per_user: true, redemption_limit_type: 'unlimited', redemption_rule: 'once_per_user', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'days', access_duration_value: 30, invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus' }
   }
   showEditor.value = true
   dirty.value = false
@@ -335,8 +367,12 @@ async function savePromo(targetStatus) {
   const code = String(editing.value.code || '').trim().toUpperCase()
   if (!code) { editorError.value = 'Code is required'; return }
   if (!normalizedType) { editorError.value = 'Promo Type is required'; return }
-  if (normalizedType === 'trial' && (!editing.value.trial_days || Number(editing.value.trial_days) < 1)) { editorError.value = 'Trial Days must be > 0'; return }
-  if (normalizedType === 'discount' && (Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) <= 0 || Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) > 100)) { editorError.value = 'Discount % must be 1–100'; return }
+  if (normalizedType === 'trial' && (!editing.value.trial_days || Number(editing.value.trial_days) < 1)) { editorError.value = 'Trial Days is required for Trial promo.'; return }
+  if (normalizedType === 'access_pass' && editing.value.access_duration_type !== 'lifetime') {
+    const days = editing.value.access_duration_value === 'custom' ? editing.value.access_duration_days : editing.value.access_duration_value
+    if (!days || Number(days) < 1) { editorError.value = 'Access Duration is required.'; return }
+  }
+  if (normalizedType === 'discount' && (Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) <= 0 || Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) > 100)) { editorError.value = 'Discount percentage must be between 1% and 100%.'; return }
 
   saving.value = true
   const storageBytes = unitToBytes(editing.value._bonus_storage_val || 0, editing.value._bonus_storage_unit || 'GB')
@@ -357,7 +393,13 @@ async function savePromo(targetStatus) {
   payload.expires_at = payload.expires_at ? new Date(payload.expires_at).toISOString() : null
 
   if (payload.type === 'trial') payload.trial_days = Number(payload.trial_days || 0)
-  if (payload.type === 'access_pass') payload.access_bonus_storage_bytes = payload.bonus_storage_bytes
+  if (payload.type !== 'trial') payload.trial_days = 0
+  if (payload.type === 'access_pass') {
+    payload.access_bonus_storage_bytes = payload.bonus_storage_bytes
+    payload.access_lifetime = payload.access_duration_type === 'lifetime'
+    payload.access_duration_days = payload.access_lifetime ? null : Number(payload.access_duration_value === 'custom' ? payload.access_duration_days : payload.access_duration_value)
+    payload.access_duration_value = payload.access_duration_days
+  }
   if (payload.type === 'discount' && !payload.discount_percent) payload.discount_percent = 0
 
   payload.status = targetStatus

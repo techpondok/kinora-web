@@ -164,6 +164,75 @@ router.post('/redeem_kinora_promo', async (req, res) => {
   }
 })
 
+async function executeLocalBroadcast(broadcastId) {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const { rows } = await client.query('SELECT * FROM kinora_broadcasts WHERE id = $1 FOR UPDATE', [broadcastId])
+    const b = rows[0]
+    if (!b) {
+      await client.query('ROLLBACK')
+      return { success: false, message: 'Broadcast tidak ditemukan' }
+    }
+
+    await client.query('UPDATE kinora_broadcasts SET status = $2, processing_started_at = now(), updated_at = now() WHERE id = $1', [broadcastId, 'processing'])
+    const users = await client.query('SELECT id FROM auth_users')
+    let created = 0
+    for (const user of users.rows) {
+      for (const channel of b.channels || ['push', 'in_app']) {
+        await client.query(
+          `INSERT INTO kinora_broadcast_deliveries (broadcast_id, user_id, channel, status, sent_at, metadata)
+           VALUES ($1, $2, $3, 'sent', now(), $4)`,
+          [broadcastId, user.id, channel, { target_type: b.target_audience?.type || 'all_users' }]
+        )
+        created += 1
+        if (channel === 'in_app') {
+          await client.query(
+            `INSERT INTO kinora_notifications (user_id, title, body, type, is_read, action_url, metadata)
+             VALUES ($1, $2, $3, 'broadcast', false, $4, $5)`,
+            [user.id, b.title, b.body || '', b.cta_url || null, { broadcast_id: broadcastId }]
+          )
+        }
+      }
+    }
+
+    await client.query(
+      `UPDATE kinora_broadcasts
+       SET status = 'completed', target_count = $2, sent_count = $3, delivered_count = 0,
+           failed_count = 0, sent_at = now(), completed_at = now(), updated_at = now()
+       WHERE id = $1`,
+      [broadcastId, users.rows.length, created]
+    )
+    await client.query('COMMIT')
+    return { success: true, broadcast_id: broadcastId, status: 'completed', target_count: users.rows.length }
+  } catch (err) {
+    await client.query('ROLLBACK')
+    await pool.query('UPDATE kinora_broadcasts SET status = $2, last_error = $3, updated_at = now() WHERE id = $1', [broadcastId, 'failed', err.message])
+    return { success: false, broadcast_id: broadcastId, message: err.message }
+  } finally {
+    client.release()
+  }
+}
+
+router.post('/admin_execute_kinora_broadcast', async (req, res) => {
+  const result = await executeLocalBroadcast(req.body?.p_broadcast_id)
+  res.json(result)
+})
+
+router.post('/process_due_kinora_broadcasts', async (req, res) => {
+  const limit = Number(req.body?.p_limit || 10)
+  const { rows } = await pool.query(
+    `SELECT id FROM kinora_broadcasts
+     WHERE status = 'scheduled' AND scheduled_at <= now()
+     ORDER BY scheduled_at ASC
+     LIMIT $1`,
+    [limit]
+  )
+  const results = []
+  for (const row of rows) results.push(await executeLocalBroadcast(row.id))
+  res.json({ success: true, processed: results.length, results })
+})
+
 // Generic fallback for unmapped RPCs
 router.post('/:fn', async (req, res) => {
   const { fn } = req.params

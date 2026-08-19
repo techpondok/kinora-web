@@ -23,7 +23,10 @@
         <option value="">Semua Status</option>
         <option value="draft">Draft</option>
         <option value="scheduled">Scheduled</option>
+        <option value="processing">Processing</option>
         <option value="completed">Completed</option>
+        <option value="failed">Failed</option>
+        <option value="cancelled">Cancelled</option>
         <option value="archived">Archived</option>
       </select>
       <select v-model="filterCategory" class="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
@@ -47,8 +50,12 @@
           <tr>
             <th class="text-left px-4 py-3 font-medium text-gray-600">Broadcast</th>
             <th class="text-left px-4 py-3 font-medium text-gray-600">Kategori</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-600">Channel</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-600">Channels</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-600">Target</th>
+            <th class="text-center px-4 py-3 font-medium text-gray-600">Sent</th>
             <th class="text-center px-4 py-3 font-medium text-gray-600">Delivered</th>
+            <th class="text-center px-4 py-3 font-medium text-gray-600">Failed</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-600">Scheduled At</th>
             <th class="text-center px-4 py-3 font-medium text-gray-600">Status</th>
             <th class="text-right px-4 py-3 font-medium text-gray-600">Action</th>
           </tr>
@@ -57,16 +64,22 @@
           <tr v-for="b in filtered" :key="b.id" class="hover:bg-gray-50">
             <td class="px-4 py-3">
               <p class="font-medium text-gray-900 truncate max-w-[200px]">{{ b.title }}</p>
-              <p class="text-xs text-gray-400">{{ b.scheduled_at ? formatDate(b.scheduled_at) : formatDate(b.created_at) }}</p>
+              <p v-if="b.last_error" class="text-xs text-amber-600 truncate max-w-[220px]">{{ b.last_error }}</p>
             </td>
             <td class="px-4 py-3"><span class="text-xs px-2 py-0.5 bg-gray-100 rounded">{{ b.category }}</span></td>
             <td class="px-4 py-3"><span class="text-xs text-gray-500">{{ (b.channels || []).join(', ') }}</span></td>
-            <td class="px-4 py-3 text-center text-xs">{{ b.delivered_count || 0 }}</td>
-            <td class="px-4 py-3 text-center"><span :class="statusClass(b.status)" class="text-xs px-2 py-0.5 rounded-full font-medium">{{ b.status }}</span></td>
+            <td class="px-4 py-3 text-xs text-gray-600">{{ targetLabel(b) }} · {{ b.target_count ?? '-' }}</td>
+            <td class="px-4 py-3 text-center text-xs">{{ b.sent_count ?? '-' }}</td>
+            <td class="px-4 py-3 text-center text-xs">{{ b.delivered_count ?? '-' }}</td>
+            <td class="px-4 py-3 text-center text-xs">{{ b.failed_count ?? '-' }}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">{{ b.scheduled_at ? formatDate(b.scheduled_at) : '-' }}</td>
+            <td class="px-4 py-3 text-center"><span :class="statusClass(b.status)" class="text-xs px-2 py-0.5 rounded-full font-medium">{{ statusLabel(b.status) }}</span></td>
             <td class="px-4 py-3 text-right space-x-2">
-              <button @click="openEditor(b)" class="text-xs text-blue-600 hover:underline">Edit</button>
-              <button v-if="b.status === 'draft'" @click="sendBroadcast(b)" class="text-xs text-green-600 hover:underline">Send</button>
-              <button @click="archiveBroadcast(b)" class="text-xs text-gray-500 hover:underline">Archive</button>
+              <button v-if="['draft','scheduled'].includes(b.status)" @click="openEditor(b)" class="text-xs text-blue-600 hover:underline">Edit</button>
+              <button v-if="['draft','scheduled','failed'].includes(b.status)" @click="sendBroadcast(b)" class="text-xs text-green-600 hover:underline">{{ b.status === 'scheduled' ? 'Send Now' : b.status === 'failed' ? 'Retry' : 'Send' }}</button>
+              <button v-if="b.status === 'scheduled'" @click="cancelBroadcast(b)" class="text-xs text-orange-600 hover:underline">Cancel</button>
+              <button v-if="['completed','failed'].includes(b.status)" @click="duplicateBroadcast(b)" class="text-xs text-purple-600 hover:underline">Duplicate</button>
+              <button v-if="['completed','failed','cancelled'].includes(b.status)" @click="archiveBroadcast(b)" class="text-xs text-gray-500 hover:underline">Archive</button>
             </td>
           </tr>
         </tbody>
@@ -104,7 +117,7 @@
           <div class="grid grid-cols-2 gap-4">
             <div><label class="block text-xs text-gray-500 mb-1">Target</label>
               <select v-model="form.target_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
-                <option value="all">All Users</option><option value="parents">Parents</option><option value="children">Children</option><option value="premium">Premium</option><option value="free">Free Users</option><option value="consultants">Consultants</option>
+                <option value="all_users">All Users</option><option value="parents">Parents</option><option value="children">Children</option><option value="premium_users">Premium Users</option><option value="free_users">Free Users</option><option value="consultants">Consultants</option>
               </select>
             </div>
             <div><label class="block text-xs text-gray-500 mb-1">Jadwal</label><input v-model="form.scheduled_at" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
@@ -128,7 +141,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { supabase } from '../lib/supabase.js'
+import { supabase, envInfo } from '../lib/supabase.js'
 
 const broadcasts = ref([])
 const loading = ref(true)
@@ -141,7 +154,7 @@ const filterCategory = ref('')
 
 const categories = ['feature_update','maintenance','security','emergency','education','promotion','survey','webinar','finance','system','general']
 
-const defaultForm = { id: null, title: '', body: '', category: 'general', priority: 'normal', channels: ['push','in_app'], target_type: 'all', scheduled_at: '', cta_label: '', cta_url: '', banner_url: '' }
+const defaultForm = { id: null, title: '', body: '', category: 'general', priority: 'normal', channels: ['push','in_app'], target_type: 'all_users', scheduled_at: '', cta_label: '', cta_url: '', banner_url: '' }
 const form = ref({ ...defaultForm })
 
 const stats = computed(() => {
@@ -150,6 +163,7 @@ const stats = computed(() => {
     { label: 'Total', value: all.length },
     { label: 'Draft', value: all.filter(b => b.status === 'draft').length },
     { label: 'Scheduled', value: all.filter(b => b.status === 'scheduled').length, color: 'text-blue-600' },
+    { label: 'Processing', value: all.filter(b => b.status === 'processing').length, color: 'text-amber-600' },
     { label: 'Completed', value: all.filter(b => b.status === 'completed').length, color: 'text-green-600' },
     { label: 'Failed', value: all.filter(b => b.status === 'failed').length, color: 'text-red-600' },
     { label: 'Delivered', value: all.reduce((s, b) => s + (b.delivered_count || 0), 0), color: 'text-amber-600' },
@@ -165,8 +179,16 @@ const filtered = computed(() => {
 })
 
 function statusClass(s) {
-  const map = { draft: 'bg-gray-100 text-gray-600', scheduled: 'bg-blue-100 text-blue-700', sending: 'bg-amber-100 text-amber-700', completed: 'bg-green-100 text-green-700', failed: 'bg-red-100 text-red-600', archived: 'bg-gray-100 text-gray-400' }
+  const map = { draft: 'bg-gray-100 text-gray-600', scheduled: 'bg-blue-100 text-blue-700', processing: 'bg-amber-100 text-amber-700', completed: 'bg-green-100 text-green-700', failed: 'bg-red-100 text-red-600', cancelled: 'bg-orange-100 text-orange-700', archived: 'bg-gray-100 text-gray-400' }
   return map[s] || 'bg-gray-100 text-gray-500'
+}
+
+function statusLabel(s) {
+  return { draft: 'Draft', scheduled: 'Scheduled', processing: 'Processing', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled', archived: 'Archived' }[s] || s
+}
+
+function targetLabel(b) {
+  return ({ all_users: 'All Users', all: 'All Users', free_users: 'Free Users', premium_users: 'Premium Users', parents: 'Parents', children: 'Children', consultants: 'Consultants' })[b.target_audience?.type] || b.target_audience?.type || '-'
 }
 
 function formatDate(d) {
@@ -176,6 +198,8 @@ function formatDate(d) {
 
 async function loadBroadcasts() {
   loading.value = true
+  console.info('[BROADCAST][ENV]', { environment: envInfo.env, project_ref: envInfo.projectRef })
+  await supabase.rpc('process_due_kinora_broadcasts', { p_limit: 10 })
   const { data } = await supabase.from('kinora_broadcasts').select('*').order('created_at', { ascending: false })
   broadcasts.value = data || []
   loading.value = false
@@ -200,6 +224,7 @@ function openEditor(b) {
 
 async function saveBroadcast(status) {
   if (!form.value.title) { saveError.value = 'Judul wajib diisi.'; return }
+  if (!form.value.channels?.length) { saveError.value = 'Pilih minimal satu channel.'; return }
   saving.value = true; saveError.value = ''
 
   try {
@@ -212,6 +237,17 @@ async function saveBroadcast(status) {
       // Convert to ISO string with timezone offset
       const localDate = new Date(form.value.scheduled_at)
       scheduledAt = localDate.toISOString()
+      console.info('[BROADCAST][TIME]', {
+        scheduled_at_utc: scheduledAt,
+        scheduled_at_local: localDate.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+        server_now_utc: new Date().toISOString(),
+        timezone: 'Asia/Jakarta'
+      })
+      if (status === 'scheduled' && localDate <= new Date()) {
+        saveError.value = 'Jadwal harus lebih besar dari waktu sekarang. Gunakan Kirim Sekarang untuk mengirim langsung.'
+        saving.value = false
+        return
+      }
     }
 
     const payload = {
@@ -225,18 +261,20 @@ async function saveBroadcast(status) {
       cta_label: form.value.cta_label || null,
       cta_url: form.value.cta_url || null,
       banner_url: form.value.banner_url || null,
-      status: status === 'scheduled' && !scheduledAt ? 'completed' : status,
-      sent_at: status !== 'draft' && !scheduledAt ? new Date().toISOString() : null,
+      status: status === 'scheduled' && !scheduledAt ? 'processing' : status,
+      sent_at: null,
       updated_at: new Date().toISOString(),
     }
 
     let error
     if (form.value.id) {
-      const res = await supabase.from('kinora_broadcasts').update(payload).eq('id', form.value.id)
+      const res = await supabase.from('kinora_broadcasts').update(payload).eq('id', form.value.id).select('id').single()
+      if (!res.error && payload.status === 'processing') await supabase.rpc('admin_execute_kinora_broadcast', { p_broadcast_id: form.value.id })
       error = res.error
     } else {
       payload.created_by = user?.id
-      const res = await supabase.from('kinora_broadcasts').insert(payload)
+      const res = await supabase.from('kinora_broadcasts').insert(payload).select('id').single()
+      if (!res.error && payload.status === 'processing') await supabase.rpc('admin_execute_kinora_broadcast', { p_broadcast_id: res.data.id })
       error = res.error
     }
 
@@ -252,12 +290,27 @@ async function saveBroadcast(status) {
 
 async function sendBroadcast(b) {
   if (!confirm(`Kirim broadcast "${b.title}" sekarang?`)) return
-  await supabase.from('kinora_broadcasts').update({ status: 'completed', sent_at: new Date().toISOString() }).eq('id', b.id)
+  await supabase.from('kinora_broadcasts').update({ status: 'processing', scheduled_at: null, updated_at: new Date().toISOString() }).eq('id', b.id)
+  await supabase.rpc('admin_execute_kinora_broadcast', { p_broadcast_id: b.id })
   await loadBroadcasts()
 }
 
+async function cancelBroadcast(b) {
+  await supabase.from('kinora_broadcasts').update({ status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', b.id)
+  await loadBroadcasts()
+}
+
+function duplicateBroadcast(b) {
+  const copy = { ...b, id: null, title: `${b.title} Copy`, status: 'draft', scheduled_at: '', target_type: b.target_audience?.type || 'all_users' }
+  delete copy.created_at
+  delete copy.updated_at
+  form.value = copy
+  saveError.value = ''
+  showEditor.value = true
+}
+
 async function archiveBroadcast(b) {
-  await supabase.from('kinora_broadcasts').update({ status: 'archived' }).eq('id', b.id)
+  await supabase.from('kinora_broadcasts').update({ status: 'archived', archived_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', b.id)
   await loadBroadcasts()
 }
 

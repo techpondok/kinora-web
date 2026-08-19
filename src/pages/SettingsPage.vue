@@ -365,7 +365,8 @@
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-xs text-gray-500 mb-1">{{ editingPromo.type === 'access_pass' ? 'Duration (days)' : 'Trial Days' }}</label><input v-model.number="editingPromo.trial_days" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
+                <div v-if="editingPromo.type === 'trial'"><label class="block text-xs text-gray-500 mb-1">Trial Days</label><input v-model.number="editingPromo.trial_days" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
+                <div v-if="editingPromo.type === 'access_pass'"><label class="block text-xs text-gray-500 mb-1">Access Duration (days)</label><input v-model.number="editingPromo.access_duration_days" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
                 <div><label class="block text-xs text-gray-500 mb-1">Max Redemptions (kosong = unlimited)</label><input v-model.number="editingPromo.max_redemptions" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
               </div>
               <!-- Access Pass specific fields -->
@@ -1450,6 +1451,13 @@ async function savePromo() {
   payload.code = code
   payload.type = payload.type || 'trial'
   payload.promo_type = payload.type
+  if (payload.type === 'access_pass') {
+    payload.access_duration_days = Number(payload.access_duration_days || payload.trial_days || 0)
+    payload.access_duration_value = payload.access_duration_days
+    payload.access_duration_type = 'days'
+    payload.access_lifetime = false
+  }
+  if (payload.type !== 'trial') payload.trial_days = 0
   payload.max_redemptions = payload.max_redemptions === '' || payload.max_redemptions === undefined || payload.max_redemptions === null ? null : Number(payload.max_redemptions)
   payload.discount_percent = Number(payload.discount_percent || 0)
   payload.bonus_storage_bytes = Number(payload.bonus_storage_bytes || 0)
