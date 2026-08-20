@@ -61,8 +61,11 @@
           <thead><tr class="border-b border-gray-100 text-left">
             <th class="px-4 py-3 font-medium text-gray-500 text-xs">Code</th>
             <th class="px-4 py-3 font-medium text-gray-500 text-xs">Type</th>
-            <th class="px-4 py-3 font-medium text-gray-500 text-xs">Benefit</th>
+            <th class="px-4 py-3 font-medium text-gray-500 text-xs">Plan</th>
+            <th class="px-4 py-3 font-medium text-gray-500 text-xs">Access</th>
+            <th class="px-4 py-3 font-medium text-gray-500 text-xs">Duration</th>
             <th class="px-4 py-3 font-medium text-gray-500 text-xs">Redemptions</th>
+            <th class="px-4 py-3 font-medium text-gray-500 text-xs">One Time/User</th>
             <th class="px-4 py-3 font-medium text-gray-500 text-xs">Validity</th>
             <th class="px-4 py-3 font-medium text-gray-500 text-xs">Status</th>
             <th class="px-4 py-3 font-medium text-gray-500 text-xs">Actions</th>
@@ -71,13 +74,17 @@
             <tr v-for="p in filteredPromos" :key="p.id" class="border-b border-gray-50 hover:bg-gray-50/50">
               <td class="px-4 py-3 font-mono font-medium text-gray-900">{{ p.code }}</td>
               <td class="px-4 py-3"><span class="px-2 py-0.5 text-[10px] rounded-full font-medium" :class="typeClass(promoType(p))">{{ typeLabel(promoType(p)) }}</span></td>
-              <td class="px-4 py-3 text-xs text-gray-600">{{ benefitSummary(p) }}</td>
+              <td class="px-4 py-3 text-xs text-gray-600">{{ planLabel(p) }}</td>
+              <td class="px-4 py-3 text-xs text-gray-600">{{ accessLabel(p) }}</td>
+              <td class="px-4 py-3 text-xs text-gray-600">{{ durationLabel(p) }}</td>
               <td class="px-4 py-3 text-xs text-gray-600">{{ p.redemption_count ?? p.total_redemptions ?? 0 }} / {{ p.max_redemptions || 'Unlimited' }}</td>
+              <td class="px-4 py-3 text-xs text-gray-600">{{ p.one_time_per_user ? 'Yes' : 'No' }}</td>
               <td class="px-4 py-3 text-xs text-gray-500">{{ validityLabel(p) }}</td>
               <td class="px-4 py-3"><span class="px-2 py-0.5 text-[10px] rounded-full font-medium" :class="statusClass(computeStatus(p))">{{ computeStatus(p) }}</span></td>
               <td class="px-4 py-3">
                 <div class="flex gap-2">
                   <button @click="openEditor(p)" class="text-xs text-blue-600 hover:underline">Edit</button>
+                  <button @click="openDetail(p)" class="text-xs text-gray-600 hover:underline">History</button>
                   <button @click="duplicatePromo(p)" class="text-xs text-purple-600 hover:underline">Dup</button>
                   <button @click="toggleActive(p)" class="text-xs" :class="p.is_active ? 'text-orange-600' : 'text-green-600'">{{ p.is_active ? 'Off' : 'On' }}</button>
                 </div>
@@ -85,6 +92,53 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Detail Drawer -->
+    <div v-if="showDetail" class="fixed inset-0 z-50 flex justify-end">
+      <div @click="showDetail = false" class="absolute inset-0 bg-black/40"></div>
+      <div class="relative bg-white w-full max-w-3xl h-full overflow-y-auto shadow-2xl">
+        <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+          <div>
+            <h3 class="font-bold text-gray-900">{{ detailPromo?.code }}</h3>
+            <p class="text-xs text-gray-500">{{ typeLabel(promoType(detailPromo || {})) }} · {{ planLabel(detailPromo || {}) }} · {{ durationLabel(detailPromo || {}) }}</p>
+          </div>
+          <button @click="showDetail = false" class="p-2 hover:bg-gray-100 rounded-lg text-gray-500">x</button>
+        </div>
+        <div class="p-6 space-y-5">
+          <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="border border-gray-200 rounded-lg p-3"><p class="text-[10px] text-gray-500">Access</p><p class="text-sm font-semibold">{{ accessLabel(detailPromo || {}) }}</p></div>
+            <div class="border border-gray-200 rounded-lg p-3"><p class="text-[10px] text-gray-500">Redemptions</p><p class="text-sm font-semibold">{{ detailPromo?.redemption_count ?? detailPromo?.total_redemptions ?? 0 }} / {{ detailPromo?.max_redemptions || 'Unlimited' }}</p></div>
+            <div class="border border-gray-200 rounded-lg p-3"><p class="text-[10px] text-gray-500">One Time/User</p><p class="text-sm font-semibold">{{ detailPromo?.one_time_per_user ? 'Yes' : 'No' }}</p></div>
+            <div class="border border-gray-200 rounded-lg p-3"><p class="text-[10px] text-gray-500">Status</p><p class="text-sm font-semibold">{{ computeStatus(detailPromo || {}) }}</p></div>
+          </section>
+          <section>
+            <h4 class="text-xs font-semibold text-gray-400 uppercase mb-3">Redemption History</h4>
+            <div v-if="detailLoading" class="text-sm text-gray-400 py-6">Memuat...</div>
+            <div v-else-if="redemptions.length === 0" class="text-sm text-gray-500 py-6 border border-gray-200 rounded-lg text-center">Belum ada redemption.</div>
+            <div v-else class="border border-gray-200 rounded-lg overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead><tr class="border-b border-gray-100 text-left text-gray-500">
+                  <th class="px-3 py-2">User</th>
+                  <th class="px-3 py-2">Redeemed At</th>
+                  <th class="px-3 py-2">Access Start</th>
+                  <th class="px-3 py-2">Access End</th>
+                  <th class="px-3 py-2">Status</th>
+                </tr></thead>
+                <tbody>
+                  <tr v-for="r in redemptions" :key="r.id" class="border-b border-gray-50">
+                    <td class="px-3 py-2 font-mono">{{ r.user_id }}</td>
+                    <td class="px-3 py-2">{{ formatDateTime(r.redeemed_at) }}</td>
+                    <td class="px-3 py-2">{{ formatDateTime(r.access_started_at) }}</td>
+                    <td class="px-3 py-2">{{ formatDateTime(r.access_expires_at) }}</td>
+                    <td class="px-3 py-2">{{ r.status }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -120,7 +174,7 @@
                 </select>
               </div>
             </div>
-            <div><label class="block text-xs text-gray-500 mb-1">Internal Name</label><input v-model="editing.internal_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="August Campaign" /></div>
+            <div><label class="block text-xs text-gray-500 mb-1">Promo Name</label><input v-model="editing.internal_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Kinora Closed Tester 6 Months" /></div>
             <div><label class="block text-xs text-gray-500 mb-1">Customer Description</label><input v-model="editing.customer_description" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Nikmati Family Plus gratis 14 hari" /></div>
             <div><label class="block text-xs text-gray-500 mb-1">Internal Notes</label><textarea v-model="editing.internal_notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Campaign Instagram Agustus 2026"></textarea></div>
           </section>
@@ -144,11 +198,30 @@
             <h4 class="text-xs font-semibold text-gray-400 uppercase">Access Pass Benefit</h4>
             <div class="grid grid-cols-2 gap-4">
               <div><label class="block text-xs text-gray-500 mb-1">Plan</label><input v-model="editing.access_plan" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="Family Plus" /></div>
-              <div><label class="block text-xs text-gray-500 mb-1">Duration Type</label>
-                <select v-model="editing.access_duration_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="days">Days</option><option value="lifetime">Lifetime / Until revoked</option></select>
+              <div><label class="block text-xs text-gray-500 mb-1">Access Type</label>
+                <select v-model="editing.access_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="free">Free Access</option><option value="paid">Paid / Checkout</option></select>
               </div>
             </div>
-            <div v-if="editing.access_duration_type !== 'lifetime'" class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div><label class="block text-xs text-gray-500 mb-1">Duration Type</label>
+                <select v-model="editing.access_duration_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="months">Months</option><option value="days">Days</option><option value="lifetime">Lifetime / Until revoked</option></select>
+              </div>
+              <label class="flex items-center gap-2 text-sm mt-6"><input type="checkbox" v-model="editing.requires_payment" class="rounded" /> Requires Payment</label>
+            </div>
+            <div v-if="editing.access_duration_type === 'months'" class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Access Duration</label>
+                <select v-model="editing.access_duration_months" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                  <option :value="1">1 Month</option>
+                  <option :value="3">3 Months</option>
+                  <option :value="6">6 Months</option>
+                  <option :value="12">12 Months</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div v-if="editing.access_duration_months === 'custom'"><label class="block text-xs text-gray-500 mb-1">Custom Months *</label><input v-model.number="editing._custom_access_months" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" placeholder="6" /></div>
+            </div>
+            <div v-if="editing.access_duration_type === 'days'" class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs text-gray-500 mb-1">Access Duration</label>
                 <select v-model="editing.access_duration_value" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
@@ -220,6 +293,7 @@
             <div><label class="block text-xs text-gray-500 mb-1">Per User/Family Rule</label>
               <select v-model="editing.redemption_rule" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none"><option value="once_per_family">Once per Family</option><option value="once_per_user">Once per User</option><option value="unlimited_per_user">Unlimited per User</option><option value="custom_per_user">Custom Limit per User</option></select>
             </div>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="editing.one_time_per_user" class="rounded" /> One Time Per User</label>
             <div v-if="editing.redemption_rule === 'custom_per_user'"><label class="block text-xs text-gray-500 mb-1">Max per User</label><input v-model.number="editing.max_per_user" type="number" min="1" class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none" /></div>
           </section>
 
@@ -273,6 +347,10 @@ const search = ref('')
 const filterType = ref('')
 const filterStatus = ref('')
 const dirty = ref(false)
+const showDetail = ref(false)
+const detailPromo = ref(null)
+const redemptions = ref([])
+const detailLoading = ref(false)
 
 const totalRedemptions = computed(() => promos.value.reduce((sum, p) => sum + (p.redemption_count ?? p.total_redemptions ?? 0), 0))
 
@@ -300,6 +378,29 @@ function typeLabel(t) { return { trial: 'Trial', access_pass: 'Access Pass', dis
 function typeClass(t) { return { trial: 'bg-green-100 text-green-700', access_pass: 'bg-blue-100 text-blue-700', discount: 'bg-amber-100 text-amber-700', family_invite: 'bg-purple-100 text-purple-700' }[t] || 'bg-gray-100 text-gray-500' }
 function statusClass(s) { return { active: 'bg-green-100 text-green-700', scheduled: 'bg-blue-100 text-blue-700', expired: 'bg-gray-100 text-gray-500', disabled: 'bg-gray-100 text-gray-500', draft: 'bg-amber-100 text-amber-700', limit_reached: 'bg-red-100 text-red-600', archived: 'bg-gray-100 text-gray-400' }[s] || 'bg-gray-100 text-gray-500' }
 
+function planLabel(p) {
+  return p.access_plan || p.trial_plan || 'family_plus'
+}
+
+function accessLabel(p) {
+  if (promoType(p) === 'access_pass') return p.requires_payment === false || p.access_type === 'free' ? 'Free' : 'Paid'
+  if (promoType(p) === 'discount') return 'Discount'
+  if (promoType(p) === 'trial') return 'Trial'
+  return 'Invite'
+}
+
+function durationLabel(p) {
+  if (promoType(p) === 'trial') return `${p.trial_days || 0} Days`
+  if (promoType(p) === 'access_pass') {
+    if (p.access_lifetime || p.access_duration_type === 'lifetime') return 'Lifetime'
+    if (p.access_duration_type === 'months') return `${p.access_duration_months || p.access_duration_value || 0} Months`
+    return `${p.access_duration_days || p.access_duration_value || 0} Days`
+  }
+  if (promoType(p) === 'discount') return p.discount_type === 'percentage' ? `${p.discount_percentage}%` : `Rp${Number(p.discount_fixed_amount || 0).toLocaleString('id-ID')}`
+  if (promoType(p) === 'family_invite') return `+${p.invitee_benefit_value || 0} days`
+  return '-'
+}
+
 function benefitSummary(p) {
   if (p.promo_type === 'trial') return `${p.trial_days || 0} Days ${p.trial_plan || 'Family Plus'}`
   if (p.promo_type === 'access_pass') return `${p.access_duration_value || '∞'} ${p.access_duration_type || 'days'} ${p.access_plan || 'Family Plus'}`
@@ -323,6 +424,25 @@ function generateCode() {
   editing.value.code = code
 }
 
+function formatDateTime(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+async function openDetail(promo) {
+  detailPromo.value = promo
+  showDetail.value = true
+  detailLoading.value = true
+  const { data, error } = await supabase
+    .from('kinora_promo_redemptions')
+    .select('id,user_id,redeemed_at,access_started_at,access_expires_at,status')
+    .eq('promo_code_id', promo.id)
+    .order('redeemed_at', { ascending: false })
+  if (error) console.error('[PROMO][HISTORY][ERROR]', error)
+  redemptions.value = data || []
+  detailLoading.value = false
+}
+
 function onTypeChange() {
   const type = editing.value.type || 'trial'
   editing.value.promo_type = type
@@ -334,21 +454,25 @@ function onTypeChange() {
   if (type !== 'access_pass') {
     editing.value.access_duration_value = null
     editing.value.access_duration_days = null
-    editing.value.access_duration_type = 'days'
+    editing.value.access_duration_months = null
+    editing.value.access_duration_type = 'months'
     editing.value.access_lifetime = false
   } else {
     editing.value.access_plan = editing.value.access_plan || 'family_plus'
-    editing.value.access_duration_type = editing.value.access_duration_type || 'days'
-    editing.value.access_duration_value = editing.value.access_duration_value || 30
+    editing.value.access_type = editing.value.access_type || 'free'
+    editing.value.requires_payment = editing.value.access_type !== 'free'
+    editing.value.access_duration_type = editing.value.access_duration_type || 'months'
+    editing.value.access_duration_months = editing.value.access_duration_months || 6
+    editing.value.access_duration_value = editing.value.access_duration_months
   }
 }
 
 function openEditor(promo) {
   if (promo) {
     const type = promoType(promo)
-    editing.value = { ...promo, promo_type: type, type, discount_percentage: promo.discount_percent ?? promo.discount_percentage ?? 0, _bonus_storage_val: bytesToUnit(promo.bonus_storage_bytes || promo.trial_bonus_storage_bytes || promo.access_bonus_storage_bytes || 0), _bonus_storage_unit: 'GB' }
+    editing.value = { ...promo, promo_type: type, type, access_type: promo.access_type || 'free', requires_payment: promo.requires_payment ?? false, discount_percentage: promo.discount_percent ?? promo.discount_percentage ?? 0, _bonus_storage_val: bytesToUnit(promo.bonus_storage_bytes || promo.trial_bonus_storage_bytes || promo.access_bonus_storage_bytes || 0), _bonus_storage_unit: 'GB' }
   } else {
-    editing.value = { promo_type: 'trial', type: 'trial', trial_days: 7, is_active: true, one_time_per_user: true, redemption_limit_type: 'unlimited', redemption_rule: 'once_per_user', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'days', access_duration_value: 30, invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus' }
+    editing.value = { promo_type: 'access_pass', type: 'access_pass', trial_days: 0, is_active: true, access_type: 'free', requires_payment: false, one_time_per_user: true, redemption_limit_type: 'limited', max_redemptions: 20, redemption_rule: 'once_per_user', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'months', access_duration_months: 6, access_duration_value: 6, invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus' }
   }
   showEditor.value = true
   dirty.value = false
@@ -369,8 +493,10 @@ async function savePromo(targetStatus) {
   if (!normalizedType) { editorError.value = 'Promo Type is required'; return }
   if (normalizedType === 'trial' && (!editing.value.trial_days || Number(editing.value.trial_days) < 1)) { editorError.value = 'Trial Days is required for Trial promo.'; return }
   if (normalizedType === 'access_pass' && editing.value.access_duration_type !== 'lifetime') {
-    const days = editing.value.access_duration_value === 'custom' ? editing.value.access_duration_days : editing.value.access_duration_value
-    if (!days || Number(days) < 1) { editorError.value = 'Access Duration is required.'; return }
+    const duration = editing.value.access_duration_type === 'months'
+      ? (editing.value.access_duration_months === 'custom' ? editing.value._custom_access_months : editing.value.access_duration_months)
+      : (editing.value.access_duration_value === 'custom' ? editing.value.access_duration_days : editing.value.access_duration_value)
+    if (!duration || Number(duration) < 1) { editorError.value = 'Access Duration is required.'; return }
   }
   if (normalizedType === 'discount' && (Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) <= 0 || Number(editing.value.discount_percent ?? editing.value.discount_percentage ?? 0) > 100)) { editorError.value = 'Discount percentage must be between 1% and 100%.'; return }
 
@@ -380,6 +506,7 @@ async function savePromo(targetStatus) {
   const payload = { ...editing.value }
   delete payload._bonus_storage_val
   delete payload._bonus_storage_unit
+  delete payload._custom_access_months
 
   payload.code = code
   payload.type = normalizedType
@@ -397,8 +524,21 @@ async function savePromo(targetStatus) {
   if (payload.type === 'access_pass') {
     payload.access_bonus_storage_bytes = payload.bonus_storage_bytes
     payload.access_lifetime = payload.access_duration_type === 'lifetime'
-    payload.access_duration_days = payload.access_lifetime ? null : Number(payload.access_duration_value === 'custom' ? payload.access_duration_days : payload.access_duration_value)
-    payload.access_duration_value = payload.access_duration_days
+    payload.access_type = payload.access_type || 'free'
+    payload.requires_payment = payload.access_type === 'free' ? false : !!payload.requires_payment
+    if (payload.access_duration_type === 'months') {
+      payload.access_duration_months = Number(editing.value.access_duration_months === 'custom' ? editing.value._custom_access_months : editing.value.access_duration_months)
+      payload.access_duration_days = null
+      payload.access_duration_value = payload.access_duration_months
+    } else if (payload.access_duration_type === 'days') {
+      payload.access_duration_days = Number(payload.access_duration_value === 'custom' ? payload.access_duration_days : payload.access_duration_value)
+      payload.access_duration_months = null
+      payload.access_duration_value = payload.access_duration_days
+    } else {
+      payload.access_duration_days = null
+      payload.access_duration_months = null
+      payload.access_duration_value = null
+    }
   }
   if (payload.type === 'discount' && !payload.discount_percent) payload.discount_percent = 0
 

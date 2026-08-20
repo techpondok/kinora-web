@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS kinora_families (
   storage_used_bytes BIGINT DEFAULT 0,
   member_count INTEGER DEFAULT 1,
   max_members INTEGER DEFAULT 5,
+  subscription_plan TEXT DEFAULT 'free',
+  subscription_expires_at TIMESTAMPTZ,
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -406,6 +408,11 @@ CREATE TABLE IF NOT EXISTS kinora_promo_codes (
   access_plan TEXT,
   access_duration_type TEXT,
   access_duration_value INTEGER,
+  access_duration_days INTEGER,
+  access_duration_months INTEGER,
+  access_lifetime BOOLEAN NOT NULL DEFAULT false,
+  access_type TEXT NOT NULL DEFAULT 'free',
+  requires_payment BOOLEAN NOT NULL DEFAULT false,
   access_bonus_storage_bytes BIGINT DEFAULT 0,
   discount_type TEXT,
   discount_percentage NUMERIC,
@@ -445,6 +452,8 @@ CREATE TABLE IF NOT EXISTS kinora_promo_redemptions (
   trial_days INTEGER NOT NULL DEFAULT 0,
   discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
   bonus_storage_bytes BIGINT NOT NULL DEFAULT 0,
+  access_started_at TIMESTAMPTZ,
+  access_expires_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -497,6 +506,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_kinora_promo_codes_code_lower_unique ON ki
 CREATE INDEX IF NOT EXISTS idx_promo_status ON kinora_promo_codes(status);
 CREATE INDEX IF NOT EXISTS idx_redemption_promo ON kinora_promo_redemptions(promo_code_id);
 CREATE INDEX IF NOT EXISTS idx_redemption_user ON kinora_promo_redemptions(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kinora_promo_redemptions_user_promo_unique ON kinora_promo_redemptions(user_id, promo_code_id);
 CREATE INDEX IF NOT EXISTS idx_banners_placement ON kinora_banners(placement);
 CREATE INDEX IF NOT EXISTS idx_banners_active ON kinora_banners(is_active);
 CREATE INDEX IF NOT EXISTS idx_landing_config_key ON kinora_landing_config(key);

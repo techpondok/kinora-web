@@ -115,13 +115,17 @@ router.post('/redeem_kinora_promo', async (req, res) => {
       await client.query('ROLLBACK')
       return res.json({ success: false, message: 'Promo sudah tidak aktif' })
     }
+    if (promo.starts_at && new Date(promo.starts_at) > new Date()) {
+      await client.query('ROLLBACK')
+      return res.json({ success: false, code: 'not_started', message: 'Promo belum dimulai' })
+    }
     if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
       await client.query('ROLLBACK')
-      return res.json({ success: false, message: 'Promo sudah kedaluwarsa' })
+      return res.json({ success: false, code: 'expired', message: 'Promo sudah kedaluwarsa' })
     }
     if (promo.max_redemptions && Number(promo.redemption_count || promo.total_redemptions || 0) >= Number(promo.max_redemptions)) {
       await client.query('ROLLBACK')
-      return res.json({ success: false, message: 'Promo code has reached its redemption limit.' })
+      return res.json({ success: false, code: 'limit_reached', message: 'Promo quota reached' })
     }
     if (promo.one_time_per_user !== false) {
       const used = await client.query(
@@ -130,24 +134,51 @@ router.post('/redeem_kinora_promo', async (req, res) => {
       )
       if (used.rows.length) {
         await client.query('ROLLBACK')
-        return res.json({ success: false, message: 'Promo has already been used by this account' })
+        return res.json({ success: false, code: 'already_redeemed', message: 'Promo ini sudah pernah digunakan.' })
+      }
+    }
+
+    let familyId = null
+    let startedAt = new Date()
+    let expiresAt = null
+    const type = promo.type || promo.promo_type
+    if (type === 'access_pass' && (promo.access_type === 'free' || promo.requires_payment === false)) {
+      const family = await client.query(
+        'SELECT id, subscription_expires_at FROM kinora_families WHERE owner_id = $1 ORDER BY created_at ASC LIMIT 1 FOR UPDATE',
+        [userId]
+      )
+      familyId = family.rows[0]?.id || null
+      const currentExpiry = family.rows[0]?.subscription_expires_at ? new Date(family.rows[0].subscription_expires_at) : null
+      const baseDate = currentExpiry && currentExpiry > startedAt ? currentExpiry : startedAt
+      expiresAt = addPromoDuration(baseDate, promo)
+      if (familyId) {
+        await client.query(
+          `UPDATE kinora_families
+           SET plan = $2, subscription_plan = $2, subscription_expires_at = $3, updated_at = now()
+           WHERE id = $1`,
+          [familyId, promo.access_plan || 'family_plus', expiresAt]
+        )
       }
     }
 
     await client.query(
       `INSERT INTO kinora_promo_redemptions
-       (promo_code_id, promo_id, promo_code, user_id, benefit_type, benefit_value, trial_days, discount_percent, bonus_storage_bytes, metadata)
-       VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+       (promo_code_id, promo_id, promo_code, user_id, family_id, benefit_type, benefit_value, status, trial_days, discount_percent, bonus_storage_bytes, access_started_at, access_expires_at, metadata)
+       VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         promo.id,
         promo.code,
         userId,
-        promo.type || promo.promo_type,
-        String(promo.trial_days || promo.discount_percent || promo.bonus_storage_bytes || ''),
+        familyId,
+        type,
+        String(promo.access_duration_months || promo.access_duration_days || promo.trial_days || promo.discount_percent || promo.bonus_storage_bytes || ''),
+        type === 'access_pass' ? 'active' : 'redeemed',
         promo.trial_days || 0,
         promo.discount_percent || promo.discount_percentage || 0,
         promo.bonus_storage_bytes || 0,
-        { type: promo.type || promo.promo_type, promo_code: promo.code },
+        type === 'access_pass' ? startedAt : null,
+        type === 'access_pass' ? expiresAt : null,
+        { promo_type: type, access_type: promo.access_type || 'free', requires_payment: promo.requires_payment === true },
       ]
     )
     await client.query(
@@ -155,14 +186,26 @@ router.post('/redeem_kinora_promo', async (req, res) => {
       [promo.id]
     )
     await client.query('COMMIT')
-    res.json({ success: true, promo_code: promo.code, type: promo.type || promo.promo_type, message: 'Promo berhasil digunakan' })
+    res.json({ success: true, promo_type: type, access_type: promo.access_type || 'free', plan: promo.access_plan || promo.trial_plan, started_at: startedAt, expires_at: expiresAt })
   } catch (err) {
     await client.query('ROLLBACK')
+    if (err.code === '23505') return res.json({ success: false, code: 'already_redeemed', message: 'Promo ini sudah pernah digunakan.' })
     res.status(500).json({ success: false, message: err.message })
   } finally {
     client.release()
   }
 })
+
+function addPromoDuration(baseDate, promo) {
+  if (promo.access_lifetime || promo.access_duration_type === 'lifetime') return null
+  const date = new Date(baseDate)
+  if (promo.access_duration_type === 'months' || promo.access_duration_months) {
+    date.setMonth(date.getMonth() + Number(promo.access_duration_months || promo.access_duration_value || 0))
+    return date
+  }
+  date.setDate(date.getDate() + Number(promo.access_duration_days || promo.access_duration_value || 0))
+  return date
+}
 
 async function executeLocalBroadcast(broadcastId) {
   const client = await pool.connect()
