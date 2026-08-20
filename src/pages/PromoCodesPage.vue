@@ -470,13 +470,34 @@ function onTypeChange() {
 function openEditor(promo) {
   if (promo) {
     const type = promoType(promo)
-    editing.value = { ...promo, promo_type: type, type, access_type: promo.access_type || 'free', requires_payment: promo.requires_payment ?? false, discount_percentage: promo.discount_percent ?? promo.discount_percentage ?? 0, _bonus_storage_val: bytesToUnit(promo.bonus_storage_bytes || promo.trial_bonus_storage_bytes || promo.access_bonus_storage_bytes || 0), _bonus_storage_unit: 'GB' }
+    editing.value = {
+      ...promo,
+      promo_type: type,
+      type,
+      access_type: promo.access_type || 'free',
+      requires_payment: promo.requires_payment ?? false,
+      discount_percentage: promo.discount_percent ?? promo.discount_percentage ?? 0,
+      _bonus_storage_val: bytesToUnit(promo.bonus_storage_bytes || promo.trial_bonus_storage_bytes || promo.access_bonus_storage_bytes || 0),
+      _bonus_storage_unit: 'GB',
+      // Convert ISO timestamps to datetime-local format for inputs
+      starts_at: toDatetimeLocal(promo.starts_at),
+      expires_at: toDatetimeLocal(promo.expires_at),
+    }
   } else {
-    editing.value = { promo_type: 'access_pass', type: 'access_pass', trial_days: 0, is_active: true, access_type: 'free', requires_payment: false, one_time_per_user: true, redemption_limit_type: 'limited', max_redemptions: 20, redemption_rule: 'once_per_user', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'months', access_duration_months: 6, access_duration_value: 6, invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus' }
+    editing.value = { promo_type: 'access_pass', type: 'access_pass', trial_days: 0, is_active: true, access_type: 'free', requires_payment: false, one_time_per_user: true, redemption_limit_type: 'limited', max_redemptions: 20, redemption_rule: 'once_per_user', user_eligibility: 'all', discount_type: 'percentage', discount_duration: 'first_payment', access_duration_type: 'months', access_duration_months: 6, access_duration_value: 6, invitee_benefit_type: 'plus_days', inviter_benefit_type: 'none', _bonus_storage_val: 0, _bonus_storage_unit: 'GB', trial_plan: 'family_plus', access_plan: 'family_plus', starts_at: '', expires_at: '' }
   }
   showEditor.value = true
   dirty.value = false
   editorError.value = ''
+}
+
+/** Convert ISO timestamp to datetime-local format (YYYY-MM-DDTHH:MM) */
+function toDatetimeLocal(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return ''
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function confirmClose() {
@@ -518,6 +539,7 @@ async function savePromo(targetStatus) {
   payload.is_active = !!payload.is_active
   payload.max_redemptions = payload.max_redemptions === '' || payload.max_redemptions === undefined || payload.max_redemptions === null ? null : Number(payload.max_redemptions)
   payload.expires_at = payload.expires_at ? new Date(payload.expires_at).toISOString() : null
+  payload.starts_at = payload.starts_at ? new Date(payload.starts_at).toISOString() : null
 
   if (payload.type === 'trial') payload.trial_days = Number(payload.trial_days || 0)
   if (payload.type !== 'trial') payload.trial_days = 0
@@ -544,8 +566,6 @@ async function savePromo(targetStatus) {
 
   payload.status = targetStatus
   payload.updated_at = new Date().toISOString()
-  if (!payload.starts_at) payload.starts_at = null
-
   console.info('[PROMO][ENV]', { environment: envInfo.env })
   console.info('[PROMO][SUPABASE]', { project: envInfo.projectRef })
   console.info('[PROMO][CREATE]', { table: 'kinora_promo_codes' })
